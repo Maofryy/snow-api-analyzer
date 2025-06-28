@@ -25,6 +25,7 @@ const initialState: BenchmarkState = {
     url: '',
     username: '',
     password: '',
+    token: '',
     connected: false,
   },
   testConfiguration: {

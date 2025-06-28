@@ -1,6 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { BenchmarkProvider } from '../contexts/BenchmarkContext';
+import { ServiceNowInstance } from '../types';
 import { Header } from '../components/Header/Header';
 import { TestConfiguration } from '../components/TestConfiguration/TestConfiguration';
 import { ExecutionArea } from '../components/ExecutionArea/ExecutionArea';
@@ -11,16 +12,51 @@ function BenchmarkDashboard() {
   const { dispatch } = useBenchmark();
 
   useEffect(() => {
-    // Mock ServiceNow connection for demo purposes
-    dispatch({
-      type: 'SET_INSTANCE',
-      payload: {
-        url: 'https://dev12345.service-now.com',
-        username: 'admin',
-        password: '****',
-        connected: true,
+    // Try the connection to ServiceNow -> store token
+      const instance: ServiceNowInstance = {
+        url: import.meta.env.VITE_INSTANCE_URL,
+        username: import.meta.env.VITE_APP_USER,
+        password: import.meta.env.VITE_APP_PASSWORD,
+        token: '',
+        connected: false,
+      };
+
+    fetch(`${instance.url}/api/now/table/sys_user?sysparm_query=user_name=${instance.username}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${btoa(`${instance.username}:${instance.password}`)}`,
       },
-    });
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.result.length > 0) {
+          dispatch({
+            type: 'SET_INSTANCE',
+            payload: {
+              url: instance.url,
+              username: instance.username,
+              password: instance.password,
+              token: '',
+              connected: true,
+            },
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Error connecting to ServiceNow:', error);
+      });
+
+    // Mock ServiceNow connection for demo purposes
+    // dispatch({
+    //   type: 'SET_INSTANCE',
+    //   payload: {
+    //     url: 'https://dev12345.service-now.com',
+    //     username: 'admin',
+    //     password: '****',
+    //     connected: true,
+    //   },
+    // });
   }, [dispatch]);
 
   return (

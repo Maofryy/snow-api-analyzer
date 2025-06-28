@@ -3,6 +3,7 @@ export interface ServiceNowInstance {
   url: string;
   username: string;
   password: string;
+  token: string;
   connected: boolean;
 }
 
