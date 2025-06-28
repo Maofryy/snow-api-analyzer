@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -18,6 +19,9 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				mono: ['JetBrains Mono', 'Fira Code', 'Source Code Pro', 'Consolas', 'monospace'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -52,16 +56,20 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
-				sidebar: {
-					DEFAULT: 'hsl(var(--sidebar-background))',
-					foreground: 'hsl(var(--sidebar-foreground))',
-					primary: 'hsl(var(--sidebar-primary))',
-					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-					accent: 'hsl(var(--sidebar-accent))',
-					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-					border: 'hsl(var(--sidebar-border))',
-					ring: 'hsl(var(--sidebar-ring))'
-				}
+				success: {
+					DEFAULT: '#22c55e',
+					dark: '#16a34a'
+				},
+				error: {
+					DEFAULT: '#ef4444',
+					dark: '#dc2626'
+				},
+				info: {
+					DEFAULT: '#3b82f6',
+					dark: '#2563eb'
+				},
+				'code-bg': '#f8fafc',
+				'code-border': '#e2e8f0'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -84,11 +92,29 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'pulse-success': {
+					'0%, 100%': {
+						backgroundColor: 'rgb(34 197 94 / 0.1)'
+					},
+					'50%': {
+						backgroundColor: 'rgb(34 197 94 / 0.2)'
+					}
+				},
+				'pulse-error': {
+					'0%, 100%': {
+						backgroundColor: 'rgb(239 68 68 / 0.1)'
+					},
+					'50%': {
+						backgroundColor: 'rgb(239 68 68 / 0.2)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-success': 'pulse-success 2s infinite',
+				'pulse-error': 'pulse-error 2s infinite'
 			}
 		}
 	},
