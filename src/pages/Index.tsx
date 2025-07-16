@@ -7,63 +7,219 @@ import { TestConfiguration } from '../components/TestConfiguration/TestConfigura
 import { ExecutionArea } from '../components/ExecutionArea/ExecutionArea';
 import { Scoreboard } from '../components/Scoreboard/Scoreboard';
 import { useBenchmark } from '../contexts/BenchmarkContext';
+import { makeAuthenticatedRequest, isAuthError, getAuthErrorMessage, getAuthStatus, isProductionMode } from '../services/authService';
+import { apiService } from '../services/apiService';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { Info } from 'lucide-react';
 
 function BenchmarkDashboard() {
   const { dispatch } = useBenchmark();
 
   useEffect(() => {
-    // Try the connection to ServiceNow -> store token
-      const instance: ServiceNowInstance = {
-        url: import.meta.env.VITE_INSTANCE_URL,
-        username: import.meta.env.VITE_APP_USER,
-        password: import.meta.env.VITE_APP_PASSWORD,
-        token: '',
-        connected: false,
-      };
+    const initializeConnection = async () => {
+      const authStatus = getAuthStatus();
+      console.log('Initializing connection with auth status:', authStatus);
+      console.log('Window location:', window.location.href);
+      console.log('Window globals check:', {
+        // @ts-ignore
+        g_ck: typeof window.g_ck !== 'undefined',
+        // @ts-ignore
+        NOW: typeof window.NOW !== 'undefined',
+        // @ts-ignore
+        g_user: typeof window.g_user !== 'undefined'
+      });
+      
+      if (authStatus.isSessionAuth) {
+        // Production mode - fetch instance info then test connection
+        console.log('Using production mode (session auth)');
+        await fetchInstanceInfo();
+      } else {
+        // Development mode - use environment variables for basic auth
+        console.log('Environment variables:', {
+          url: import.meta.env.VITE_INSTANCE_URL,
+          username: import.meta.env.VITE_APP_USER,
+          password: import.meta.env.VITE_APP_PASSWORD ? '***' : 'undefined'
+        });
+        
+        const instance: ServiceNowInstance = {
+          url: import.meta.env.VITE_INSTANCE_URL,
+          username: import.meta.env.VITE_APP_USER,
+          password: import.meta.env.VITE_APP_PASSWORD,
+          token: '',
+          connected: false,
+          authMode: 'basic'
+        };
 
-    fetch(`${instance.url}/api/now/table/sys_user?sysparm_query=user_name=${instance.username}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${btoa(`${instance.username}:${instance.password}`)}`,
-      },
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.result.length > 0) {
+        if (instance.url && instance.username && instance.password) {
+          console.log('Setting instance for development mode:', {
+            url: instance.url,
+            username: instance.username,
+            password: instance.password ? '***' : 'undefined',
+            authMode: instance.authMode
+          });
+          // Set instance for development mode
+          apiService.setInstance(instance);
+          await testConnection();
+        } else {
+          console.error('Missing environment variables for development mode:', {
+            url: !!instance.url,
+            username: !!instance.username,
+            password: !!instance.password
+          });
+        }
+      }
+    };
+
+    initializeConnection();
+  }, [dispatch]);
+
+  const fetchInstanceInfo = async () => {
+    try {
+      console.log('Production mode: fetching token first...');
+      
+      // First, get a token to authenticate subsequent requests
+      const tokenResponse = await fetch('/api/elosa/api_benchmark/get-token', {
+        method: 'GET',
+        credentials: 'include', // Include session cookies
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest' // Required by ServiceNow
+        }
+      });
+      
+      if (!tokenResponse.ok) {
+        throw new Error(`Token fetch failed: ${tokenResponse.status} ${tokenResponse.statusText}`);
+      }
+      
+      const tokenData = await tokenResponse.json();
+      console.log('Token response:', tokenData);
+      
+      // Extract token from nested response structure
+      const token = tokenData.result?.token;
+      if (!token) {
+        throw new Error('No token found in response');
+      }
+      
+      console.log('Token fetched successfully');
+      
+      // Now fetch instance info using the token
+      console.log('Fetching instance info with token:', token);
+      const instanceResponse = await fetch('/api/elosa/api_benchmark/instance-info', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-UserToken': token // Use the extracted token for authentication
+        }
+      });
+      
+      if (!instanceResponse.ok) {
+        throw new Error(`Instance info fetch failed: ${instanceResponse.status} ${instanceResponse.statusText}`);
+      }
+      
+      const instanceData = await instanceResponse.json();
+      console.log('Instance info response:', instanceData);
+      
+      // Extract instance data from nested response structure
+      const instanceInfo = instanceData.result || instanceData;
+      console.log('Extracted instance info:', instanceInfo);
+      
+      if (!instanceInfo.url || !instanceInfo.username) {
+        throw new Error('Invalid instance info response - missing url or username');
+      }
+      
+      // Set instance for production mode - let authService handle token via tokenManager
+      const instance: ServiceNowInstance = {
+        url: instanceInfo.url,
+        username: instanceInfo.username,
+        password: '',
+        token: '', // Token will be managed by tokenManager
+        connected: false,
+        authMode: 'session'
+      };
+      
+      console.log('Setting instance for production mode:', instance);
+      apiService.setInstance(instance);
+      
+      // Now test connection - this will trigger token fetch via tokenManager
+      console.log('Calling testConnection...');
+      await testConnection();
+    } catch (error) {
+      console.error('Error in production mode setup:', error);
+    }
+  };
+
+  const testConnection = async () => {
+    try {
+      console.log('Starting connection test...');
+      const result = await apiService.testConnection();
+      console.log('Connection test result:', result);
+      
+      if (result.success) {
+        const authStatus = getAuthStatus();
+        console.log('Auth status:', authStatus);
+        
+        // For production mode, get instance info from current context
+        if (authStatus.isSessionAuth) {
+          console.log('Setting connected instance for production mode');
           dispatch({
             type: 'SET_INSTANCE',
             payload: {
-              url: instance.url,
-              username: instance.username,
-              password: instance.password,
+              url: window.location.origin,
+              username: 'current_user',
+              password: '',
               token: '',
               connected: true,
+              authMode: 'session'
             },
           });
+        } else {
+          // Development mode - instance already set via apiService.setInstance()
+          console.log('Setting connected instance for development mode');
+          const instance: ServiceNowInstance = {
+            url: import.meta.env.VITE_INSTANCE_URL,
+            username: import.meta.env.VITE_APP_USER,
+            password: import.meta.env.VITE_APP_PASSWORD,
+            token: '',
+            connected: true,
+            authMode: 'basic'
+          };
+          
+          dispatch({
+            type: 'SET_INSTANCE',
+            payload: instance,
+          });
         }
-      })
-      .catch(error => {
-        console.error('Error connecting to ServiceNow:', error);
-      });
-
-    // Mock ServiceNow connection for demo purposes
-    // dispatch({
-    //   type: 'SET_INSTANCE',
-    //   payload: {
-    //     url: 'https://dev12345.service-now.com',
-    //     username: 'admin',
-    //     password: '****',
-    //     connected: true,
-    //   },
-    // });
-  }, [dispatch]);
+      } else {
+        console.error('Connection test failed:', result.error);
+      }
+    } catch (error) {
+      console.error('Error testing connection:', error);
+      
+      if (isAuthError(error)) {
+        console.error('Authentication error:', getAuthErrorMessage(error));
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       
       <main className="container mx-auto px-6 py-8">
+        {/* Production Mode Information */}
+        {isProductionMode() && (
+          <Alert className="mb-8">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Production Mode:</strong> This application is running inside ServiceNow using session authentication. 
+              Instance configuration is automatically managed through your ServiceNow session.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Left side - Test Configuration and Execution (70% width) */}
           <div className="lg:col-span-3 space-y-8">

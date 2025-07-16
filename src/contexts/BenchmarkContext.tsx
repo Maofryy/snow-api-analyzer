@@ -1,6 +1,8 @@
 
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-import { TestConfiguration, TestResult, TestStatus, PerformanceMetrics, ServiceNowInstance } from '../types';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
+import { TestResult, TestStatus, PerformanceMetrics, ServiceNowInstance, TestConfiguration, CustomRequest } from '../types';
+import { storeCredentials, retrieveCredentials, clearCredentials } from '../utils/secureStorage';
+import { loadCustomRequestsFromStorage, saveCustomRequestsToStorage } from '../utils/customRequestStorage';
 
 interface BenchmarkState {
   instance: ServiceNowInstance;
@@ -9,6 +11,7 @@ interface BenchmarkState {
   testStatuses: TestStatus[];
   performanceMetrics: PerformanceMetrics;
   isRunning: boolean;
+  customRequests: CustomRequest[];
 }
 
 type BenchmarkAction =
@@ -18,45 +21,62 @@ type BenchmarkAction =
   | { type: 'UPDATE_TEST_STATUS'; payload: TestStatus }
   | { type: 'SET_RUNNING'; payload: boolean }
   | { type: 'RESET_TESTS' }
-  | { type: 'UPDATE_METRICS'; payload: PerformanceMetrics };
+  | { type: 'UPDATE_METRICS'; payload: PerformanceMetrics }
+  | { type: 'ADD_CUSTOM_REQUEST'; payload: CustomRequest }
+  | { type: 'UPDATE_CUSTOM_REQUEST'; payload: CustomRequest }
+  | { type: 'DELETE_CUSTOM_REQUEST'; payload: string };
 
-const initialState: BenchmarkState = {
-  instance: {
-    url: '',
-    username: '',
-    password: '',
-    token: '',
-    connected: false,
-  },
+const getInitialState = (): BenchmarkState => {
+  const storedCredentials = retrieveCredentials();
+  const storedCustomRequests = loadCustomRequestsFromStorage();
+  return {
+    instance: {
+      url: storedCredentials?.url || '',
+      username: storedCredentials?.username || '',
+      password: storedCredentials?.password || '',
+      token: storedCredentials?.token || '',
+      connected: false,
+    },
   testConfiguration: {
-    fieldSelectionTests: {
+    dotWalkingTests: {
       enabled: true,
       parameters: {
         table: 'incident',
+        recordLimit: 50,
+      },
+      selectedVariants: undefined,
+      selectedLimits: undefined,
+    },
+    multiTableTests: {
+      enabled: false,
+      parameters: {
+        recordLimit: 25,
+      },
+      selectedVariants: undefined,
+      selectedLimits: undefined,
+    },
+    schemaTailoringTests: {
+      enabled: false,
+      parameters: {
         recordLimit: 100,
-        fieldSets: ['minimal', 'standard', 'full'],
       },
+      selectedVariants: undefined,
+      selectedLimits: undefined,
     },
-    relationshipTests: {
-      enabled: true,
+    performanceScaleTests: {
+      enabled: false,
       parameters: {
-        depth: 3,
-        relationships: ['caller', 'assigned_to', 'ci_item'],
+        recordLimit: 500,
       },
+      selectedVariants: undefined,
+      selectedLimits: undefined,
     },
-    filteringTests: {
-      enabled: true,
+    realWorldScenarios: {
+      enabled: false,
       parameters: {
-        table: 'incident',
-        filterComplexity: 'complex',
+        recordLimit: 5,
       },
-    },
-    paginationTests: {
-      enabled: true,
-      parameters: {
-        pageSize: 50,
-        totalRecords: 500,
-      },
+      selectedVariants: undefined,
     },
   },
   testResults: [],
@@ -71,12 +91,22 @@ const initialState: BenchmarkState = {
     totalGraphqlPayloadSize: 0,
     successRate: 0,
   },
-  isRunning: false,
+    isRunning: false,
+    customRequests: storedCustomRequests,
+  };
 };
+
+const initialState: BenchmarkState = getInitialState();
 
 function benchmarkReducer(state: BenchmarkState, action: BenchmarkAction): BenchmarkState {
   switch (action.type) {
     case 'SET_INSTANCE':
+      // Securely store credentials when instance is updated
+      try {
+        storeCredentials(action.payload);
+      } catch (error) {
+        console.error('Failed to store credentials securely:', error);
+      }
       return { ...state, instance: action.payload };
     case 'UPDATE_TEST_CONFIG':
       return { 
@@ -88,12 +118,13 @@ function benchmarkReducer(state: BenchmarkState, action: BenchmarkAction): Bench
         ...state, 
         testResults: [...state.testResults, action.payload] 
       };
-    case 'UPDATE_TEST_STATUS':
+    case 'UPDATE_TEST_STATUS': {
       const updatedStatuses = state.testStatuses.filter(s => s.id !== action.payload.id);
       return { 
         ...state, 
         testStatuses: [...updatedStatuses, action.payload] 
       };
+    }
     case 'SET_RUNNING':
       return { ...state, isRunning: action.payload };
     case 'RESET_TESTS':
@@ -105,6 +136,32 @@ function benchmarkReducer(state: BenchmarkState, action: BenchmarkAction): Bench
       };
     case 'UPDATE_METRICS':
       return { ...state, performanceMetrics: action.payload };
+    case 'ADD_CUSTOM_REQUEST': {
+      const newCustomRequests = [...state.customRequests, action.payload];
+      saveCustomRequestsToStorage(newCustomRequests);
+      return { 
+        ...state, 
+        customRequests: newCustomRequests
+      };
+    }
+    case 'UPDATE_CUSTOM_REQUEST': {
+      const updatedCustomRequests = state.customRequests.map(req => 
+        req.id === action.payload.id ? action.payload : req
+      );
+      saveCustomRequestsToStorage(updatedCustomRequests);
+      return { 
+        ...state, 
+        customRequests: updatedCustomRequests
+      };
+    }
+    case 'DELETE_CUSTOM_REQUEST': {
+      const filteredCustomRequests = state.customRequests.filter(req => req.id !== action.payload);
+      saveCustomRequestsToStorage(filteredCustomRequests);
+      return { 
+        ...state, 
+        customRequests: filteredCustomRequests
+      };
+    }
     default:
       return state;
   }
@@ -113,6 +170,16 @@ function benchmarkReducer(state: BenchmarkState, action: BenchmarkAction): Bench
 interface BenchmarkContextType {
   state: BenchmarkState;
   dispatch: React.Dispatch<BenchmarkAction>;
+  clearStoredCredentials: () => void;
+}
+
+// Helper function to safely clear stored credentials
+function clearStoredCredentials(): void {
+  try {
+    clearCredentials();
+  } catch (error) {
+    console.error('Failed to clear stored credentials:', error);
+  }
 }
 
 const BenchmarkContext = createContext<BenchmarkContextType | undefined>(undefined);
@@ -120,8 +187,16 @@ const BenchmarkContext = createContext<BenchmarkContextType | undefined>(undefin
 export function BenchmarkProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(benchmarkReducer, initialState);
 
+  // Clear credentials when component unmounts for security
+  useEffect(() => {
+    return () => {
+      // Only clear credentials if user explicitly disconnects
+      // Don't clear on every unmount to preserve user session
+    };
+  }, []);
+
   return (
-    <BenchmarkContext.Provider value={{ state, dispatch }}>
+    <BenchmarkContext.Provider value={{ state, dispatch, clearStoredCredentials }}>
       {children}
     </BenchmarkContext.Provider>
   );

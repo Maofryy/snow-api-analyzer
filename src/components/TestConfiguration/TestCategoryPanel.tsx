@@ -1,6 +1,6 @@
-
 import React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,19 +8,21 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useBenchmark } from '../../contexts/BenchmarkContext';
+import { testSpecs } from '../../specs/testSpecs';
 
 interface TestCategoryPanelProps {
   title: string;
   testKey: string;
   isOpen: boolean;
   onToggle: () => void;
+  description?: string;
 }
 
-export function TestCategoryPanel({ title, testKey, isOpen, onToggle }: TestCategoryPanelProps) {
+export function TestCategoryPanel({ title, testKey, isOpen, onToggle, description }: TestCategoryPanelProps) {
   const { state, dispatch } = useBenchmark();
   const testConfig = state.testConfiguration[testKey as keyof typeof state.testConfiguration];
 
-  const updateTestConfig = (updates: any) => {
+  const updateTestConfig = (updates: Record<string, unknown>) => {
     dispatch({
       type: 'UPDATE_TEST_CONFIG',
       payload: {
@@ -32,7 +34,7 @@ export function TestCategoryPanel({ title, testKey, isOpen, onToggle }: TestCate
     });
   };
 
-  const updateParameters = (paramUpdates: any) => {
+  const updateParameters = (paramUpdates: Record<string, unknown>) => {
     updateTestConfig({
       parameters: {
         ...testConfig.parameters,
@@ -43,126 +45,178 @@ export function TestCategoryPanel({ title, testKey, isOpen, onToggle }: TestCate
 
   const renderParameterControls = () => {
     switch (testKey) {
-      case 'fieldSelectionTests':
+      case 'dotWalkingTests': {
+        // Get all dot-walking test variants and their record limits
+        const variants = Object.keys(testSpecs.dotWalkingTests);
+        const variantOptions = variants.map(variant => ({ label: variant, value: variant }));
+        
+        // Get record limits from first variant (they should be similar)
+        const firstVariant = testSpecs.dotWalkingTests[variants[0] as keyof typeof testSpecs.dotWalkingTests];
+        const limits = firstVariant?.recordLimits || [25, 50, 100];
+        
         return (
           <div className="space-y-4">
             <div>
-              <Label htmlFor="table" className="font-mono text-sm">Table</Label>
-              <Select 
-                value={testConfig.parameters.table} 
-                onValueChange={(value) => updateParameters({ table: value })}
-              >
-                <SelectTrigger className="code-input">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="incident">incident</SelectItem>
-                  <SelectItem value="change_request">change_request</SelectItem>
-                  <SelectItem value="problem">problem</SelectItem>
-                  <SelectItem value="kb_knowledge">kb_knowledge</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="font-mono text-sm">Test Variants</Label>
+              <div className="my-2">
+                <MultiSelect
+                  options={variantOptions}
+                  defaultValue={testConfig.selectedVariants || variants}
+                  onValueChange={vals => updateTestConfig({ selectedVariants: vals })}
+                  placeholder="Select test variants..."
+                />
+              </div>
             </div>
-            
             <div>
-              <Label htmlFor="recordLimit" className="font-mono text-sm">Record Limit</Label>
-              <Input
-                id="recordLimit"
-                type="number"
-                value={testConfig.parameters.recordLimit}
-                onChange={(e) => updateParameters({ recordLimit: parseInt(e.target.value) })}
-                className="code-input"
-              />
+              <Label className="font-mono text-sm">Record Limits</Label>
+              <div className="my-2">
+                <MultiSelect
+                  options={limits.map(lim => ({ label: String(lim), value: String(lim) }))}
+                  defaultValue={(testConfig.selectedLimits || limits).map(String)}
+                  onValueChange={vals => updateTestConfig({ selectedLimits: vals.map(Number) })}
+                  placeholder="Select record limits..."
+                />
+              </div>
             </div>
           </div>
         );
-
-      case 'relationshipTests':
+      }
+      
+      case 'multiTableTests': {
+        const variants = Object.keys(testSpecs.multiTableTests);
+        const variantOptions = variants.map(variant => ({ label: variant, value: variant }));
+        
+        const firstVariant = testSpecs.multiTableTests[variants[0] as keyof typeof testSpecs.multiTableTests];
+        const limits = firstVariant?.recordLimits || [25, 50];
+        
         return (
           <div className="space-y-4">
             <div>
-              <Label htmlFor="depth" className="font-mono text-sm">Relationship Depth</Label>
-              <Input
-                id="depth"
-                type="number"
-                value={testConfig.parameters.depth}
-                onChange={(e) => updateParameters({ depth: parseInt(e.target.value) })}
-                className="code-input"
-                min="1"
-                max="5"
-              />
+              <Label className="font-mono text-sm">Multi-Table Scenarios</Label>
+              <div className="my-2">
+                <MultiSelect
+                  options={variantOptions}
+                  defaultValue={testConfig.selectedVariants || variants}
+                  onValueChange={vals => updateTestConfig({ selectedVariants: vals })}
+                  placeholder="Select scenarios..."
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="font-mono text-sm">Record Limits per Table</Label>
+              <div className="my-2">
+                <MultiSelect
+                  options={limits.map(lim => ({ label: String(lim), value: String(lim) }))}
+                  defaultValue={(testConfig.selectedLimits || limits).map(String)}
+                  onValueChange={vals => updateTestConfig({ selectedLimits: vals.map(Number) })}
+                  placeholder="Select record limits..."
+                />
+              </div>
             </div>
           </div>
         );
-
-      case 'filteringTests':
+      }
+      
+      case 'schemaTailoringTests': {
+        const variants = Object.keys(testSpecs.schemaTailoringTests);
+        const variantOptions = variants.map(variant => ({ label: variant, value: variant }));
+        
+        const firstVariant = testSpecs.schemaTailoringTests[variants[0] as keyof typeof testSpecs.schemaTailoringTests];
+        const limits = firstVariant?.recordLimits || [50, 100, 200];
+        
         return (
           <div className="space-y-4">
             <div>
-              <Label htmlFor="filterTable" className="font-mono text-sm">Table</Label>
-              <Select 
-                value={testConfig.parameters.table} 
-                onValueChange={(value) => updateParameters({ table: value })}
-              >
-                <SelectTrigger className="code-input">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="incident">incident</SelectItem>
-                  <SelectItem value="change_request">change_request</SelectItem>
-                  <SelectItem value="problem">problem</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="font-mono text-sm">Schema Scenarios</Label>
+              <div className="my-2">
+                <MultiSelect
+                  options={variantOptions}
+                  defaultValue={testConfig.selectedVariants || variants}
+                  onValueChange={vals => updateTestConfig({ selectedVariants: vals })}
+                  placeholder="Select schema scenarios..."
+                />
+              </div>
             </div>
-            
             <div>
-              <Label htmlFor="complexity" className="font-mono text-sm">Filter Complexity</Label>
-              <Select 
-                value={testConfig.parameters.filterComplexity} 
-                onValueChange={(value) => updateParameters({ filterComplexity: value })}
-              >
-                <SelectTrigger className="code-input">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="simple">Simple</SelectItem>
-                  <SelectItem value="complex">Complex</SelectItem>
-                  <SelectItem value="nested">Nested</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="font-mono text-sm">Record Limits</Label>
+              <div className="my-2">
+                <MultiSelect
+                  options={limits.map(lim => ({ label: String(lim), value: String(lim) }))}
+                  defaultValue={(testConfig.selectedLimits || limits).map(String)}
+                  onValueChange={vals => updateTestConfig({ selectedLimits: vals.map(Number) })}
+                  placeholder="Select record limits..."
+                />
+              </div>
             </div>
           </div>
         );
-
-      case 'paginationTests':
+      }
+      
+      case 'performanceScaleTests': {
+        const variants = Object.keys(testSpecs.performanceScaleTests);
+        const variantOptions = variants.map(variant => ({ label: variant, value: variant }));
+        
+        const firstVariant = testSpecs.performanceScaleTests[variants[0] as keyof typeof testSpecs.performanceScaleTests];
+        const limits = firstVariant?.recordLimits || [500, 1000, 2500];
+        
         return (
           <div className="space-y-4">
             <div>
-              <Label htmlFor="pageSize" className="font-mono text-sm">Page Size</Label>
-              <Input
-                id="pageSize"
-                type="number"
-                value={testConfig.parameters.pageSize}
-                onChange={(e) => updateParameters({ pageSize: parseInt(e.target.value) })}
-                className="code-input"
-              />
+              <Label className="font-mono text-sm">Performance Scenarios</Label>
+              <div className="my-2">
+                <MultiSelect
+                  options={variantOptions}
+                  defaultValue={testConfig.selectedVariants || variants}
+                  onValueChange={vals => updateTestConfig({ selectedVariants: vals })}
+                  placeholder="Select performance scenarios..."
+                />
+              </div>
             </div>
-            
             <div>
-              <Label htmlFor="totalRecords" className="font-mono text-sm">Total Records</Label>
-              <Input
-                id="totalRecords"
-                type="number"
-                value={testConfig.parameters.totalRecords}
-                onChange={(e) => updateParameters({ totalRecords: parseInt(e.target.value) })}
-                className="code-input"
-              />
+              <Label className="font-mono text-sm">High-Volume Record Limits</Label>
+              <div className="my-2">
+                <MultiSelect
+                  options={limits.map(lim => ({ label: String(lim), value: String(lim) }))}
+                  defaultValue={(testConfig.selectedLimits || limits).map(String)}
+                  onValueChange={vals => updateTestConfig({ selectedLimits: vals.map(Number) })}
+                  placeholder="Select record limits..."
+                />
+              </div>
             </div>
           </div>
         );
-
+      }
+      
+      case 'realWorldScenarios': {
+        const variants = Object.keys(testSpecs.realWorldScenarios);
+        const variantOptions = variants.map(variant => ({ label: variant, value: variant }));
+        
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label className="font-mono text-sm">Real-World Use Cases</Label>
+              <div className="my-2">
+                <MultiSelect
+                  options={variantOptions}
+                  defaultValue={testConfig.selectedVariants || variants}
+                  onValueChange={vals => updateTestConfig({ selectedVariants: vals })}
+                  placeholder="Select use cases..."
+                />
+              </div>
+            </div>
+            <div className="text-sm text-gray-600 p-3 bg-blue-50 rounded">
+              💡 These tests simulate real developer scenarios like loading incident detail pages and notification contexts.
+            </div>
+          </div>
+        );
+      }
+      
       default:
-        return null;
+        return (
+          <div className="text-sm text-gray-500 p-3">
+            No configuration options available for this test category.
+          </div>
+        );
     }
   };
 
@@ -170,17 +224,25 @@ export function TestCategoryPanel({ title, testKey, isOpen, onToggle }: TestCate
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <div className="border border-gray-200 rounded-lg bg-white">
         <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            className="w-full justify-between p-4 h-auto font-mono hover:bg-gray-50"
+          <div
+            className="w-full justify-between p-4 h-auto font-mono hover:bg-gray-50 cursor-pointer flex items-center"
+            tabIndex={0}
+            role="button"
+            aria-expanded={isOpen}
           >
-            <div className="flex items-center space-x-3">
-              <Switch
-                checked={testConfig.enabled}
-                onCheckedChange={(enabled) => updateTestConfig({ enabled })}
-                onClick={(e) => e.stopPropagation()}
-              />
-              <span className="font-medium">{title}</span>
+            <div className="flex items-center space-x-3 flex-1">
+              <div onClick={(e) => e.stopPropagation()}>
+                <Switch
+                  checked={testConfig.enabled}
+                  onCheckedChange={(enabled) => updateTestConfig({ enabled })}
+                />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium">{title}</div>
+                {description && (
+                  <div className="text-sm text-gray-600 font-normal">{description}</div>
+                )}
+              </div>
               {testConfig.enabled && (
                 <span className="bg-success/20 text-success-dark px-2 py-1 rounded text-xs">
                   ENABLED
@@ -188,7 +250,7 @@ export function TestCategoryPanel({ title, testKey, isOpen, onToggle }: TestCate
               )}
             </div>
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </Button>
+          </div>
         </CollapsibleTrigger>
         
         <CollapsibleContent>
