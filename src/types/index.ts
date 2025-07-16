@@ -5,38 +5,69 @@ export interface ServiceNowInstance {
   password: string;
   token: string;
   connected: boolean;
+  // Session-based authentication data
+  sessionToken?: string;
+  sessionExpiry?: Date;
+  authMode?: 'basic' | 'session';
+  lastTokenRefresh?: Date;
 }
 
 export interface TestConfiguration {
-  fieldSelectionTests: {
+  dotWalkingTests: {
     enabled: boolean;
     parameters: {
       table: string;
       recordLimit: number;
-      fieldSets: string[];
     };
+    selectedVariants?: string[];
+    selectedLimits?: number[];
   };
-  relationshipTests: {
+  multiTableTests: {
     enabled: boolean;
     parameters: {
-      depth: number;
-      relationships: string[];
+      recordLimit: number;
     };
+    selectedVariants?: string[];
+    selectedLimits?: number[];
   };
-  filteringTests: {
+  schemaTailoringTests: {
     enabled: boolean;
     parameters: {
-      table: string;
-      filterComplexity: 'simple' | 'complex' | 'nested';
+      recordLimit: number;
     };
+    selectedVariants?: string[];
+    selectedLimits?: number[];
   };
-  paginationTests: {
+  performanceScaleTests: {
     enabled: boolean;
     parameters: {
-      pageSize: number;
-      totalRecords: number;
+      recordLimit: number;
     };
+    selectedVariants?: string[];
+    selectedLimits?: number[];
   };
+  realWorldScenarios: {
+    enabled: boolean;
+    parameters: {
+      recordLimit: number;
+    };
+    selectedVariants?: string[];
+  };
+}
+
+export interface DataComparisonResult {
+  isEquivalent: boolean;
+  recordCountMatch: boolean;
+  dataConsistency: number;
+  issues: string[];
+  restRecordCount: number;
+  graphqlRecordCount: number;
+  fieldMismatches: Array<{
+    recordIndex: number;
+    field: string;
+    restValue: unknown;
+    graphqlValue: unknown;
+  }>;
 }
 
 export interface TestResult {
@@ -48,6 +79,7 @@ export interface TestResult {
     requestCount: number;
     success: boolean;
     error?: string;
+    allResponseTimes?: number[];
   };
   graphqlApi: {
     responseTime: number;
@@ -55,9 +87,11 @@ export interface TestResult {
     requestCount: number;
     success: boolean;  
     error?: string;
+    allResponseTimes?: number[];
   };
   winner: 'rest' | 'graphql' | 'tie';
   timestamp: Date;
+  dataComparison?: DataComparisonResult;
 }
 
 export interface TestStatus {
@@ -67,6 +101,22 @@ export interface TestStatus {
   progress: number;
   startTime?: Date;
   endTime?: Date;
+  restApiCall?: {
+    endpoint: string;
+    method: string;
+    requestBody?: unknown;
+    responseBody?: unknown;
+    headers?: Record<string, string>;
+  };
+  graphqlApiCall?: {
+    endpoint: string;
+    query: string;
+    variables?: unknown;
+    requestBody?: unknown;
+    responseBody?: unknown;
+    headers?: Record<string, string>;
+  };
+  dataComparison?: DataComparisonResult;
 }
 
 export interface PerformanceMetrics {
@@ -78,4 +128,59 @@ export interface PerformanceMetrics {
   totalRestPayloadSize: number;
   totalGraphqlPayloadSize: number;
   successRate: number;
+}
+
+export interface ApiError {
+  message: string;
+  code?: string;
+  details?: unknown;
+  timestamp: Date;
+}
+
+export interface ValidationError {
+  field: string;
+  message: string;
+  value?: unknown;
+}
+
+export interface ApiCallResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: ApiError;
+  responseTime: number;
+  payloadSize: number;
+  allResponseTimes: number[];
+}
+
+export interface GraphQLFieldStructure {
+  [key: string]: boolean | GraphQLFieldStructure;
+}
+
+export interface CustomRequest {
+  id: string;
+  name: string;
+  description?: string;
+  table: string;
+  restConfig: {
+    fields: string[];
+    filters?: string;
+    orderBy?: string;
+    limit?: number;
+  };
+  graphqlConfig: {
+    fields: GraphQLFieldStructure;
+    filters?: string;
+    orderBy?: string;
+    limit?: number;
+  };
+  tags?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CustomRequestCategory {
+  id: 'customRequests';
+  name: 'Custom Requests';
+  requests: CustomRequest[];
+  enabled: boolean;
 }
