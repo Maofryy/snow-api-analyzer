@@ -93,8 +93,8 @@ export function TestConsole() {
       
       <div 
         ref={consoleRef}
-        className="test-console"
-        style={{ minHeight: '200px', maxHeight: '300px' }}
+        className="test-console overflow-y-auto bg-gray-900 text-green-400 p-4 font-mono text-sm"
+        style={{ minHeight: '300px', maxHeight: '400px' }}
       >
         {logs.length === 0 ? (
           <div className="text-gray-500">

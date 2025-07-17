@@ -5,9 +5,9 @@ import { LiveConsole } from './LiveConsole';
 
 export function ExecutionArea() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <LiveProgress />
-      <LiveConsole />
+      <LiveConsole maxHeight="450px" />
     </div>
   );
 }
