@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Clock, Zap, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { useBenchmark } from "../../contexts/BenchmarkContext";
 import { TestStatus } from "../../types";
 import { ApiCallDetailsModal } from "./ApiCallDetailsModal";
@@ -39,36 +41,45 @@ export function LiveProgress() {
                 dataComparison={selectedTest?.dataComparison}
             />
             <Card className="p-6">
-                <h3 className="text-lg font-semibold font-mono mb-4">Live Test Progress</h3>
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold font-mono">Test Execution Status</h3>
+                    <div className="flex items-center space-x-2 text-sm font-mono text-gray-600">
+                        <span>{testStatuses.filter(s => s.status === 'completed').length} completed</span>
+                        <span>•</span>
+                        <span>{testStatuses.filter(s => s.status === 'running').length} running</span>
+                        <span>•</span>
+                        <span>{testStatuses.filter(s => s.status === 'failed').length} failed</span>
+                    </div>
+                </div>
                 <div className="space-y-4">
                     {testStatuses.map((status) => {
                         if (typeof status !== "object" || status === null) return null;
                         return (
-                            <div key={status.id} className={`space-y-2 p-3 rounded-md transition-colors ${status.restApiCall || status.graphqlApiCall ? "border border-gray-200" : ""}`}>
+                            <div key={status.id} className={`space-y-3 p-4 rounded-lg border transition-all hover:shadow-md ${
+                                status.status === "completed" ? "border-green-200 bg-green-50" :
+                                status.status === "failed" ? "border-red-200 bg-red-50" :
+                                status.status === "running" ? "border-blue-200 bg-blue-50" :
+                                "border-gray-200 bg-gray-50"
+                            }`}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-3">
-                                        <div
-                                            className={`status-dot ${
-                                                status.status === "running"
-                                                    ? "status-running"
-                                                    : status.status === "completed"
-                                                    ? "status-connected"
-                                                    : status.status === "failed"
-                                                    ? "status-disconnected"
-                                                    : "status-pending"
-                                            }`}
-                                        ></div>
-                                        <span className="font-mono text-sm font-medium">{status.testType}</span>
+                                        <div className="flex items-center space-x-2">
+                                            {status.status === "running" && <Clock className="w-4 h-4 text-blue-600 animate-spin" />}
+                                            {status.status === "completed" && <CheckCircle className="w-4 h-4 text-green-600" />}
+                                            {status.status === "failed" && <XCircle className="w-4 h-4 text-red-600" />}
+                                            {status.status === "pending" && <AlertCircle className="w-4 h-4 text-gray-400" />}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-mono text-sm font-medium">{status.testType}</span>
+                                            <span className="font-mono text-xs text-gray-500 uppercase">{status.status}</span>
+                                        </div>
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         {status.dataComparison && (
-                                            <div className={`px-2 py-1 font-mono text-xs rounded border ${
-                                                status.dataComparison.isEquivalent 
-                                                    ? "bg-green-100 text-green-700 border-green-200" 
-                                                    : "bg-red-100 text-red-700 border-red-200"
-                                            }`}>
-                                                {status.dataComparison.isEquivalent ? "✓" : "✗"} {status.dataComparison.dataConsistency}%
-                                            </div>
+                                            <Badge variant={status.dataComparison.isEquivalent ? "default" : status.dataComparison.onlyKnownIssues ? "secondary" : "destructive"}>
+                                                {status.dataComparison.isEquivalent ? "✓" : 
+                                                 status.dataComparison.onlyKnownIssues ? "⚠" : "✗"} {status.dataComparison.dataConsistency}%
+                                            </Badge>
                                         )}
                                         {(status.restApiCall || status.graphqlApiCall) && (
                                             <button
@@ -79,29 +90,55 @@ export function LiveProgress() {
                                                 }}
                                                 type="button"
                                             >
-                                                See Details
+                                                Details
                                             </button>
                                         )}
                                     </div>
                                 </div>
 
-                                <div className="flex items-center space-x-2">
-                                    <span className="font-mono text-xs text-gray-500 uppercase">{status.status}</span>
-                                    {status.status === "running" && <span className="font-mono text-xs text-info">{Math.round(status.progress)}%</span>}
-                                </div>
-
                                 <div className="relative group w-full">
-                                    <Progress value={status.progress} className="h-2 transition-shadow group-hover:shadow-lg" />
+                                    <Progress value={status.progress} className="h-3 transition-shadow group-hover:shadow-lg [&>div]:bg-blue-500" />
+                                    {status.status === "running" && (
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <span className="font-mono text-xs text-gray-700 font-medium">{Math.round(status.progress)}%</span>
+                                        </div>
+                                    )}
                                 </div>
 
-                                {status.startTime && (
-                                    <div className="text-xs font-mono text-gray-500">
-                                        Started: {status.startTime instanceof Date ? status.startTime.toLocaleTimeString() : ""}
-                                        {status.endTime && status.startTime instanceof Date && status.endTime instanceof Date && (
-                                            <span className="ml-4">Duration: {Math.round((status.endTime.getTime() - status.startTime.getTime()) / 1000)}s</span>
-                                        )}
+                                <div className="grid grid-cols-2 gap-4 text-xs font-mono text-gray-600">
+                                    <div className="flex items-center space-x-2">
+                                        <Clock className="w-3 h-3" />
+                                        <span>
+                                            {status.status === "completed" && status.endTime ? (
+                                                `Completed: ${new Date(status.endTime).toLocaleTimeString()}`
+                                            ) : status.status === "failed" && status.endTime ? (
+                                                `Failed: ${new Date(status.endTime).toLocaleTimeString()}`
+                                            ) : status.startTime ? (
+                                                `Started: ${new Date(status.startTime).toLocaleTimeString()}`
+                                            ) : (
+                                                "Not started"
+                                            )}
+                                        </span>
                                     </div>
-                                )}
+                                    <div className="flex items-center space-x-2">
+                                        <Zap className="w-3 h-3" />
+                                        <span>
+                                            {status.endTime && status.startTime ? (
+                                                `Duration: ${Math.round((new Date(status.endTime).getTime() - new Date(status.startTime).getTime()) / 1000)}s`
+                                            ) : status.status === "running" && status.startTime ? (
+                                                `Running for ${Math.round((Date.now() - new Date(status.startTime).getTime()) / 1000)}s`
+                                            ) : status.status === "running" ? (
+                                                "Starting..."
+                                            ) : status.status === "completed" ? (
+                                                "Completed"
+                                            ) : status.status === "failed" ? (
+                                                "Failed"
+                                            ) : (
+                                                "Pending"
+                                            )}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         );
                     })}

@@ -13,7 +13,7 @@ export function TestConsole() {
     
     testStatuses.forEach((status) => {
       if (status.startTime) {
-        logs.push(`[${status.startTime.toLocaleTimeString()}] Starting ${status.testType}...`);
+        logs.push(`[${new Date(status.startTime).toLocaleTimeString()}] Starting ${status.testType}...`);
       }
       
       if (status.status === 'running') {
@@ -62,7 +62,8 @@ export function TestConsole() {
           // Add data comparison info if available
           if (result.dataComparison) {
             const consistency = result.dataComparison.dataConsistency;
-            const equivalent = result.dataComparison.isEquivalent ? '✓' : '✗';
+            const equivalent = result.dataComparison.isEquivalent ? '✓' : 
+                              result.dataComparison.onlyKnownIssues ? '⚠' : '✗';
             logs.push(`  └─ Data Consistency: ${equivalent} ${consistency}%`);
           }
         }

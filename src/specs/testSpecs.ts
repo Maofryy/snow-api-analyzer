@@ -1,7 +1,7 @@
 // ServiceNow Table API vs GraphQL (GlideRecord_Query) Benchmark Specifications
 // Designed to showcase GraphQL advantages while providing fair comparisons
 
-import { getDefaultTableFields } from '../utils/serviceNowFieldMappings';
+import { getDefaultTableFields } from "../utils/serviceNowFieldMappings";
 
 export const testSpecs = {
     // 🚀 DOT-WALKING PERFORMANCE TESTS
@@ -200,12 +200,50 @@ export const testSpecs = {
                         { table: "change_request", fields: ["number", "state", "risk", "short_description"], filter: "" },
                         { table: "sys_user", fields: ["user_name", "email", "department.name"], filter: "active=true" },
                     ],
-                    graphqlQuery: `{
-            incidents: incident(queryConditions: "active=true") { number state priority short_description }
-            problems: problem(queryConditions: "") { number state short_description }
-            changes: change_request(queryConditions: "") { number state risk short_description }
-            users: sys_user(queryConditions: "active=true") { user_name email department { name } }
-          }`,
+                    graphqlFields: {
+                        incidents: {
+                            table: "incident",
+                            filter: "active=true",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                priority: { value: true, displayValue: true },
+                                short_description: { value: true, displayValue: true },
+                            },
+                        },
+                        problems: {
+                            table: "problem",
+                            filter: "",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                short_description: { value: true, displayValue: true },
+                            },
+                        },
+                        changes: {
+                            table: "change_request",
+                            filter: "",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                risk: { value: true, displayValue: true },
+                                short_description: { value: true, displayValue: true },
+                            },
+                        },
+                        users: {
+                            table: "sys_user",
+                            filter: "active=true",
+                            fields: {
+                                user_name: { value: true, displayValue: true },
+                                email: { value: true, displayValue: true },
+                                department: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                    },
                 },
             ],
         },
@@ -221,11 +259,46 @@ export const testSpecs = {
                         { table: "problem", fields: ["assigned_to", "state"], filter: "" },
                         { table: "change_request", fields: ["assigned_to", "state", "risk"], filter: "" },
                     ],
-                    graphqlQuery: `{
-            incidents: incident(queryConditions: "assigned_to!=empty") { assigned_to { user_name } state priority }
-            problems: problem(queryConditions: "") { assigned_to { user_name } state }
-            changes: change_request(queryConditions: "") { assigned_to { user_name } state risk }
-          }`,
+                    graphqlFields: {
+                        incidents: {
+                            table: "incident",
+                            filter: "assigned_to!=empty",
+                            fields: {
+                                assigned_to: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                state: { value: true, displayValue: true },
+                                priority: { value: true, displayValue: true },
+                            },
+                        },
+                        problems: {
+                            table: "problem",
+                            filter: "",
+                            fields: {
+                                assigned_to: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                state: { value: true, displayValue: true },
+                            },
+                        },
+                        changes: {
+                            table: "change_request",
+                            filter: "",
+                            fields: {
+                                assigned_to: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                state: { value: true, displayValue: true },
+                                risk: { value: true, displayValue: true },
+                            },
+                        },
+                    },
                 },
             ],
         },
@@ -241,11 +314,49 @@ export const testSpecs = {
                         { table: "incident", fields: ["number", "state", "caller_id.user_name", "short_description"], filter: "active=true" },
                         { table: "sc_req_item", fields: ["number", "state", "cat_item.name"], filter: "active=true" },
                     ],
-                    graphqlQuery: `{
-            service_requests: sc_request(queryConditions: "active=true") { number state stage requested_for { user_name } }
-            incidents: incident(queryConditions: "active=true") { number state caller_id { user_name } short_description }
-            request_items: sc_req_item(queryConditions: "active=true") { number state cat_item { name } }
-          }`,
+                    graphqlFields: {
+                        service_requests: {
+                            table: "sc_request",
+                            filter: "active=true",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                stage: { value: true, displayValue: true },
+                                requested_for: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                        incidents: {
+                            table: "incident",
+                            filter: "active=true",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                caller_id: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                short_description: { value: true, displayValue: true },
+                            },
+                        },
+                        request_items: {
+                            table: "sc_req_item",
+                            filter: "active=true",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                cat_item: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                    },
                 },
             ],
         },
@@ -256,11 +367,11 @@ export const testSpecs = {
     schemaTailoringTests: {
         mobile_optimized: {
             description: "Mobile app scenarios - minimal data for performance",
-            table: "incident",
             recordLimits: [50, 100, 200],
             scenarios: [
                 {
                     name: "incident_list_mobile",
+                    table: "incident",
                     restFields: ["number", "short_description", "state", "priority"],
                     graphqlFields: {
                         number: { value: true, displayValue: true },
@@ -272,6 +383,7 @@ export const testSpecs = {
                 },
                 {
                     name: "incident_detail_mobile",
+                    table: "incident",
                     restFields: ["number", "short_description", "description", "state", "priority", "caller_id.user_name", "assigned_to.user_name"],
                     graphqlFields: {
                         number: { value: true, displayValue: true },
@@ -294,6 +406,7 @@ export const testSpecs = {
                 },
                 {
                     name: "mobile_notification_preview",
+                    table: "incident",
                     restFields: ["number", "short_description", "priority", "state"],
                     graphqlFields: {
                         number: { value: true, displayValue: true },
@@ -310,11 +423,34 @@ export const testSpecs = {
                         { table: "incident", fields: ["number", "state", "short_description"], filter: "caller_id=javascript:gs.getUserID()" },
                         { table: "kb_knowledge", fields: ["number", "short_description"], filter: "workflow_state=published^sys_view_count>100" },
                     ],
-                    graphqlQuery: `{
-            my_requests: sc_request(queryConditions: "opened_by=javascript:gs.getUserID()") { number state short_description }
-            my_incidents: incident(queryConditions: "caller_id=javascript:gs.getUserID()") { number state short_description }
-            popular_articles: kb_knowledge(queryConditions: "workflow_state=published^sys_view_count>100") { number short_description }
-          }`,
+                    graphqlFields: {
+                        my_requests: {
+                            table: "sc_request",
+                            filter: "opened_by=javascript:gs.getUserID()",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                short_description: { value: true, displayValue: true },
+                            },
+                        },
+                        my_incidents: {
+                            table: "incident",
+                            filter: "caller_id=javascript:gs.getUserID()",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                short_description: { value: true, displayValue: true },
+                            },
+                        },
+                        popular_articles: {
+                            table: "kb_knowledge",
+                            filter: "workflow_state=published^sys_view_count>100",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                short_description: { value: true, displayValue: true },
+                            },
+                        },
+                    },
                     purpose: "Mobile service portal - user's tickets and popular knowledge articles",
                 },
                 {
@@ -323,10 +459,26 @@ export const testSpecs = {
                         { table: "alm_asset", fields: ["asset_tag", "display_name", "state"], filter: "assigned_to=javascript:gs.getUserID()" },
                         { table: "incident", fields: ["number", "state", "priority"], filter: "cmdb_ci.assigned_to=javascript:gs.getUserID()^active=true" },
                     ],
-                    graphqlQuery: `{
-            my_assets: alm_asset(queryConditions: "assigned_to=javascript:gs.getUserID()") { asset_tag display_name state }
-            asset_incidents: incident(queryConditions: "cmdb_ci.assigned_to=javascript:gs.getUserID()^active=true") { number state priority }
-          }`,
+                    graphqlFields: {
+                        my_assets: {
+                            table: "alm_asset",
+                            filter: "assigned_to=javascript:gs.getUserID()",
+                            fields: {
+                                asset_tag: { value: true, displayValue: true },
+                                display_name: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                            },
+                        },
+                        asset_incidents: {
+                            table: "incident",
+                            filter: "cmdb_ci.assigned_to=javascript:gs.getUserID()^active=true",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                priority: { value: true, displayValue: true },
+                            },
+                        },
+                    },
                     purpose: "Mobile asset manager - user's assigned assets and related incidents",
                 },
             ],
@@ -334,11 +486,11 @@ export const testSpecs = {
 
         reporting_focused: {
             description: "Report-specific data extraction",
-            table: "incident",
             recordLimits: [100, 250, 500],
             scenarios: [
                 {
                     name: "incident_categorization_report",
+                    table: "incident",
                     restFields: ["number", "opened_at", "resolved_at", "category", "subcategory", "priority", "assignment_group.name"],
                     graphqlFields: {
                         number: { value: true, displayValue: true },
@@ -357,6 +509,7 @@ export const testSpecs = {
                 },
                 {
                     name: "team_assignment_metrics",
+                    table: "incident",
                     restFields: ["number", "state", "assignment_group.name", "assigned_to.user_name", "opened_at", "sys_updated_on"],
                     graphqlFields: {
                         number: { value: true, displayValue: true },
@@ -384,12 +537,67 @@ export const testSpecs = {
                         { table: "change_request", fields: ["number", "state", "type", "assignment_group.name", "start_date", "end_date"], filter: "start_date>=javascript:gs.beginningOfMonth()" },
                         { table: "sys_user_group", fields: ["name", "manager.user_name"], filter: "active=true^type=itil" },
                     ],
-                    graphqlQuery: `{
-            monthly_incidents: incident(queryConditions: "opened_at>=javascript:gs.beginningOfMonth()") { number state priority assignment_group { name } opened_at resolved_at }
-            monthly_problems: problem(queryConditions: "opened_at>=javascript:gs.beginningOfMonth()") { number state assignment_group { name } opened_at resolved_at }
-            monthly_changes: change_request(queryConditions: "start_date>=javascript:gs.beginningOfMonth()") { number state type assignment_group { name } start_date end_date }
-            itil_groups: sys_user_group(queryConditions: "active=true^type=itil") { name manager { user_name } }
-          }`,
+                    graphqlFields: {
+                        monthly_incidents: {
+                            table: "incident",
+                            filter: "opened_at>=javascript:gs.beginningOfMonth()",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                priority: { value: true, displayValue: true },
+                                assignment_group: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                opened_at: { value: true, displayValue: true },
+                                resolved_at: { value: true, displayValue: true },
+                            },
+                        },
+                        monthly_problems: {
+                            table: "problem",
+                            filter: "opened_at>=javascript:gs.beginningOfMonth()",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                assignment_group: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                opened_at: { value: true, displayValue: true },
+                                resolved_at: { value: true, displayValue: true },
+                            },
+                        },
+                        monthly_changes: {
+                            table: "change_request",
+                            filter: "start_date>=javascript:gs.beginningOfMonth()",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                type: { value: true, displayValue: true },
+                                assignment_group: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                start_date: { value: true, displayValue: true },
+                                end_date: { value: true, displayValue: true },
+                            },
+                        },
+                        itil_groups: {
+                            table: "sys_user_group",
+                            filter: "active=true^type=itil",
+                            fields: {
+                                name: { value: true, displayValue: true },
+                                manager: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                    },
                     purpose: "Monthly ITSM metrics across incidents, problems, changes, and team structure",
                 },
                 {
@@ -399,11 +607,50 @@ export const testSpecs = {
                         { table: "incident", fields: ["number", "business_service.name", "state", "opened_at", "resolved_at"], filter: "business_service!=empty^opened_at>=javascript:gs.daysAgo(30)" },
                         { table: "sla", fields: ["name", "percentage", "business_service.name", "task.number"], filter: "active=true^percentage<95" },
                     ],
-                    graphqlQuery: `{
-            active_services: cmdb_ci_service(queryConditions: "operational_status!=retired") { name business_criticality operational_status }
-            service_incidents: incident(queryConditions: "business_service!=empty^opened_at>=javascript:gs.daysAgo(30)") { number business_service { name } state opened_at resolved_at }
-            failing_slas: sla(queryConditions: "active=true^percentage<95") { name percentage business_service { name } task { number } }
-          }`,
+                    graphqlFields: {
+                        active_services: {
+                            table: "cmdb_ci_service",
+                            filter: "operational_status!=retired",
+                            fields: {
+                                name: { value: true, displayValue: true },
+                                business_criticality: { value: true, displayValue: true },
+                                operational_status: { value: true, displayValue: true },
+                            },
+                        },
+                        service_incidents: {
+                            table: "incident",
+                            filter: "business_service!=empty^opened_at>=javascript:gs.daysAgo(30)",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                business_service: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                state: { value: true, displayValue: true },
+                                opened_at: { value: true, displayValue: true },
+                                resolved_at: { value: true, displayValue: true },
+                            },
+                        },
+                        failing_slas: {
+                            table: "sla",
+                            filter: "active=true^percentage<95",
+                            fields: {
+                                name: { value: true, displayValue: true },
+                                percentage: { value: true, displayValue: true },
+                                business_service: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                task: {
+                                    _reference: {
+                                        number: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                    },
                     purpose: "Service performance report with incidents and SLA compliance",
                 },
             ],
@@ -415,11 +662,11 @@ export const testSpecs = {
     performanceScaleTests: {
         high_volume_tasks: {
             description: "High-volume task data retrieval performance",
-            table: "task",
             recordLimits: [500, 1000, 2500],
             scenarios: [
                 {
                     name: "bulk_export_basic",
+                    table: "task",
                     restFields: ["number", "short_description", "state", "priority", "opened_at"],
                     graphqlFields: {
                         number: { value: true, displayValue: true },
@@ -431,6 +678,7 @@ export const testSpecs = {
                 },
                 {
                     name: "bulk_export_with_relationships",
+                    table: "task",
                     restFields: ["number", "short_description", "opened_by.user_name", "assigned_to.user_name", "assignment_group.name"],
                     graphqlFields: {
                         number: { value: true, displayValue: true },
@@ -459,15 +707,48 @@ export const testSpecs = {
                         { table: "sys_user_group", fields: ["name", "manager.user_name", "description"], filter: "active=true^type=itil" },
                         { table: "cmdb_ci", fields: ["name", "sys_class_name", "operational_status"], filter: "install_status=1" },
                     ],
-                    graphqlQuery: `{
-            all_tasks: task(queryConditions: "") { number state assignment_group { name } opened_at }
-            itil_groups: sys_user_group(queryConditions: "active=true^type=itil") { name manager { user_name } description }
-            active_cis: cmdb_ci(queryConditions: "install_status=1") { name sys_class_name operational_status }
-          }`,
+                    graphqlFields: {
+                        all_tasks: {
+                            table: "task",
+                            filter: "",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                assignment_group: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                opened_at: { value: true, displayValue: true },
+                            },
+                        },
+                        itil_groups: {
+                            table: "sys_user_group",
+                            filter: "active=true^type=itil",
+                            fields: {
+                                name: { value: true, displayValue: true },
+                                manager: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                description: { value: true, displayValue: true },
+                            },
+                        },
+                        active_cis: {
+                            table: "cmdb_ci",
+                            filter: "install_status=1",
+                            fields: {
+                                name: { value: true, displayValue: true },
+                                sys_class_name: { value: true, displayValue: true },
+                                operational_status: { value: true, displayValue: true },
+                            },
+                        },
+                    },
                 },
             ],
         },
-        
+
         system_logs_analysis: {
             description: "Large system table performance (syslog table)",
             table: "syslog",
@@ -485,14 +766,14 @@ export const testSpecs = {
                 },
             ],
         },
-        
+
         cmdb_inventory: {
             description: "CMDB configuration items performance",
-            table: "cmdb_ci",
             recordLimits: [500, 1000, 2000],
             scenarios: [
                 {
                     name: "ci_inventory_overview",
+                    table: "cmdb_ci",
                     restFields: ["name", "sys_class_name", "install_status", "operational_status"],
                     graphqlFields: {
                         name: { value: true, displayValue: true },
@@ -503,6 +784,7 @@ export const testSpecs = {
                 },
                 {
                     name: "ci_ownership_tracking",
+                    table: "cmdb_ci",
                     restFields: ["name", "sys_class_name", "owned_by.user_name", "location.name", "cost_center"],
                     graphqlFields: {
                         name: { value: true, displayValue: true },
@@ -528,12 +810,70 @@ export const testSpecs = {
                         { table: "alm_asset", fields: ["asset_tag", "display_name", "ci.name", "cost"], filter: "ci!=empty" },
                         { table: "incident", fields: ["number", "cmdb_ci.name", "state"], filter: "cmdb_ci!=empty^active=true" },
                     ],
-                    graphqlQuery: `{
-            configuration_items: cmdb_ci(queryConditions: "") { name sys_class_name install_status owned_by { user_name } }
-            relationships: cmdb_rel_ci(queryConditions: "") { parent { name } child { name } type { name } }
-            linked_assets: alm_asset(queryConditions: "ci!=empty") { asset_tag display_name ci { name } cost }
-            ci_incidents: incident(queryConditions: "cmdb_ci!=empty^active=true") { number cmdb_ci { name } state }
-          }`,
+                    graphqlFields: {
+                        configuration_items: {
+                            table: "cmdb_ci",
+                            filter: "",
+                            fields: {
+                                name: { value: true, displayValue: true },
+                                sys_class_name: { value: true, displayValue: true },
+                                install_status: { value: true, displayValue: true },
+                                owned_by: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                        relationships: {
+                            table: "cmdb_rel_ci",
+                            filter: "",
+                            fields: {
+                                parent: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                child: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                type: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                        linked_assets: {
+                            table: "alm_asset",
+                            filter: "ci!=empty",
+                            fields: {
+                                asset_tag: { value: true, displayValue: true },
+                                display_name: { value: true, displayValue: true },
+                                ci: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                cost: { value: true, displayValue: true },
+                            },
+                        },
+                        ci_incidents: {
+                            table: "incident",
+                            filter: "cmdb_ci!=empty^active=true",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                cmdb_ci: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                state: { value: true, displayValue: true },
+                            },
+                        },
+                    },
                 },
             ],
         },
@@ -708,17 +1048,78 @@ export const testSpecs = {
                 {
                     name: "change_advisory_board_view",
                     restCalls: [
-                        { table: "change_request", fields: ["number", "state", "type", "risk", "start_date", "requested_by.user_name", "cmdb_ci.name"], filter: "state=assess^ORstate=authorize" },
+                        { table: "change_request", fields: ["number", "state", "type", "risk", "start_date", "requested_by.user_name", "cmdb_ci.name"], filter: "" },
                         { table: "change_task", fields: ["number", "state", "change_request.number", "assigned_to.user_name"], filter: "active=true" },
                         { table: "cmdb_ci", fields: ["name", "operational_status", "business_criticality"], filter: "" },
                         { table: "sysapproval_approver", fields: ["approver.user_name", "state", "sysapproval.number"], filter: "sysapproval.sys_class_name=change_request" },
                     ],
-                    graphqlQuery: `{
-            pending_changes: change_request(queryConditions: "state=assess^ORstate=authorize") { number state type risk start_date requested_by { user_name } cmdb_ci { name } }
-            change_tasks: change_task(queryConditions: "active=true") { number state change_request { number } assigned_to { user_name } }
-            affected_cis: cmdb_ci(queryConditions: "") { name operational_status business_criticality }
-            change_approvals: sysapproval_approver(queryConditions: "sysapproval.sys_class_name=change_request") { approver { user_name } state sysapproval { number } }
-          }`,
+                    graphqlFields: {
+                        pending_changes: {
+                            table: "change_request",
+                            filter: "state=assess^ORstate=authorize",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                type: { value: true, displayValue: true },
+                                risk: { value: true, displayValue: true },
+                                start_date: { value: true, displayValue: true },
+                                requested_by: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                cmdb_ci: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                        change_tasks: {
+                            table: "change_task",
+                            filter: "active=true",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                change_request: {
+                                    _reference: {
+                                        number: { value: true, displayValue: true },
+                                    },
+                                },
+                                assigned_to: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                        affected_cis: {
+                            table: "cmdb_ci",
+                            filter: "",
+                            fields: {
+                                name: { value: true, displayValue: true },
+                                operational_status: { value: true, displayValue: true },
+                                business_criticality: { value: true, displayValue: true },
+                            },
+                        },
+                        change_approvals: {
+                            table: "sysapproval_approver",
+                            filter: "sysapproval.sys_class_name=change_request",
+                            fields: {
+                                approver: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                state: { value: true, displayValue: true },
+                                sysapproval: {
+                                    _reference: {
+                                        number: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                    },
                     purpose: "CAB meeting dashboard with changes, tasks, CIs, and approvals",
                 },
             ],
@@ -736,12 +1137,71 @@ export const testSpecs = {
                         { table: "ast_contract", fields: ["number", "state", "cost", "vendor.name", "starts", "ends"], filter: "active=true" },
                         { table: "incident", fields: ["number", "state", "cmdb_ci.name", "opened_at"], filter: "cmdb_ci!=empty^category=hardware" },
                     ],
-                    graphqlQuery: `{
-            assets: alm_asset(queryConditions: "") { asset_tag display_name state model { name } assigned_to { user_name } }
-            configuration_items: cmdb_ci(queryConditions: "") { name install_status operational_status location { name } }
-            contracts: ast_contract(queryConditions: "active=true") { number state cost vendor { name } starts ends }
-            hardware_incidents: incident(queryConditions: "cmdb_ci!=empty^category=hardware") { number state cmdb_ci { name } opened_at }
-          }`,
+                    graphqlFields: {
+                        assets: {
+                            table: "alm_asset",
+                            filter: "",
+                            fields: {
+                                asset_tag: { value: true, displayValue: true },
+                                display_name: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                model: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                assigned_to: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                        configuration_items: {
+                            table: "cmdb_ci",
+                            filter: "",
+                            fields: {
+                                name: { value: true, displayValue: true },
+                                install_status: { value: true, displayValue: true },
+                                operational_status: { value: true, displayValue: true },
+                                location: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                        contracts: {
+                            table: "ast_contract",
+                            filter: "active=true",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                cost: { value: true, displayValue: true },
+                                vendor: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                starts: { value: true, displayValue: true },
+                                ends: { value: true, displayValue: true },
+                            },
+                        },
+                        hardware_incidents: {
+                            table: "incident",
+                            filter: "cmdb_ci!=empty^category=hardware",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                cmdb_ci: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                opened_at: { value: true, displayValue: true },
+                            },
+                        },
+                    },
                     purpose: "Complete asset view with procurement, CMDB, contracts, and incidents",
                 },
             ],
@@ -759,12 +1219,88 @@ export const testSpecs = {
                         { table: "sys_user_grmember", fields: ["user.user_name", "group.name"], filter: "" },
                         { table: "sc_request", fields: ["number", "state", "requested_for.user_name", "cat_item.name"], filter: "cat_item.category.title=HR" },
                     ],
-                    graphqlQuery: `{
-            employees: sys_user(queryConditions: "active=true") { user_name first_name last_name email department { name } manager { user_name } location { name } }
-            user_roles: sys_user_has_role(queryConditions: "") { user { user_name } role { name } granted_by { user_name } }
-            group_memberships: sys_user_grmember(queryConditions: "") { user { user_name } group { name } }
-            hr_requests: sc_request(queryConditions: "cat_item.category.title=HR") { number state requested_for { user_name } cat_item { name } }
-          }`,
+                    graphqlFields: {
+                        employees: {
+                            table: "sys_user",
+                            filter: "active=true",
+                            fields: {
+                                user_name: { value: true, displayValue: true },
+                                first_name: { value: true, displayValue: true },
+                                last_name: { value: true, displayValue: true },
+                                email: { value: true, displayValue: true },
+                                department: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                manager: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                location: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                        user_roles: {
+                            table: "sys_user_has_role",
+                            filter: "",
+                            fields: {
+                                user: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                role: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                                granted_by: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                        group_memberships: {
+                            table: "sys_user_grmember",
+                            filter: "",
+                            fields: {
+                                user: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                group: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                        hr_requests: {
+                            table: "sc_request",
+                            filter: "cat_item.category.title=HR",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                state: { value: true, displayValue: true },
+                                requested_for: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                cat_item: {
+                                    _reference: {
+                                        name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                    },
                     purpose: "HR portal with employee profiles, roles, groups, and HR requests",
                 },
             ],
@@ -782,12 +1318,75 @@ export const testSpecs = {
                         { table: "kb_use", fields: ["kb_knowledge.number", "user.user_name", "sys_created_on"], filter: "" },
                         { table: "kb_category", fields: ["title", "description", "parent.title"], filter: "active=true" },
                     ],
-                    graphqlQuery: `{
-            published_articles: kb_knowledge(queryConditions: "workflow_state=published") { number short_description kb_category { title } author { user_name } sys_view_count }
-            article_feedback: kb_feedback(queryConditions: "") { article { number } rating comments user { user_name } }
-            usage_tracking: kb_use(queryConditions: "") { kb_knowledge { number } user { user_name } sys_created_on }
-            categories: kb_category(queryConditions: "active=true") { title description parent { title } }
-          }`,
+                    graphqlFields: {
+                        published_articles: {
+                            table: "kb_knowledge",
+                            filter: "workflow_state=published",
+                            fields: {
+                                number: { value: true, displayValue: true },
+                                short_description: { value: true, displayValue: true },
+                                kb_category: {
+                                    _reference: {
+                                        title: { value: true, displayValue: true },
+                                    },
+                                },
+                                author: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                sys_view_count: { value: true, displayValue: true },
+                            },
+                        },
+                        article_feedback: {
+                            table: "kb_feedback",
+                            filter: "",
+                            fields: {
+                                article: {
+                                    _reference: {
+                                        number: { value: true, displayValue: true },
+                                    },
+                                },
+                                rating: { value: true, displayValue: true },
+                                comments: { value: true, displayValue: true },
+                                user: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                        usage_tracking: {
+                            table: "kb_use",
+                            filter: "",
+                            fields: {
+                                kb_knowledge: {
+                                    _reference: {
+                                        number: { value: true, displayValue: true },
+                                    },
+                                },
+                                user: {
+                                    _reference: {
+                                        user_name: { value: true, displayValue: true },
+                                    },
+                                },
+                                sys_created_on: { value: true, displayValue: true },
+                            },
+                        },
+                        categories: {
+                            table: "kb_category",
+                            filter: "active=true",
+                            fields: {
+                                title: { value: true, displayValue: true },
+                                description: { value: true, displayValue: true },
+                                parent: {
+                                    _reference: {
+                                        title: { value: true, displayValue: true },
+                                    },
+                                },
+                            },
+                        },
+                    },
                     purpose: "Knowledge portal with articles, feedback, usage analytics, and categories",
                 },
             ],

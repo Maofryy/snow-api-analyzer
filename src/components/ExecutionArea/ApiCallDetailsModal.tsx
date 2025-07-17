@@ -161,8 +161,14 @@ export const ApiCallDetailsModal: React.FC<ApiCallDetailsModalProps> = ({ open, 
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <strong>Data Equivalence:</strong>
-                  <Badge variant={dataComparison.isEquivalent ? "default" : "destructive"}>
-                    {dataComparison.isEquivalent ? "✓ Equivalent" : "✗ Not Equivalent"}
+                  <Badge variant={
+                    dataComparison.isEquivalent ? "default" : 
+                    dataComparison.onlyKnownIssues ? "secondary" : 
+                    "destructive"
+                  }>
+                    {dataComparison.isEquivalent ? "✓ Equivalent" : 
+                     dataComparison.onlyKnownIssues ? "⚠ Known Issues Only" : 
+                     "✗ Not Equivalent"}
                   </Badge>
                 </div>
                 
@@ -180,7 +186,12 @@ export const ApiCallDetailsModal: React.FC<ApiCallDetailsModalProps> = ({ open, 
                   <div className="flex items-center gap-2 mt-1">
                     <div className="bg-gray-200 rounded-full h-2 flex-1">
                       <div 
-                        className={`h-2 rounded-full ${dataComparison.dataConsistency >= 95 ? 'bg-green-500' : dataComparison.dataConsistency >= 80 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                        className={`h-2 rounded-full ${
+                          dataComparison.dataConsistency >= 95 ? 'bg-green-500' : 
+                          dataComparison.onlyKnownIssues ? 'bg-orange-500' : 
+                          dataComparison.dataConsistency >= 80 ? 'bg-yellow-500' : 
+                          'bg-red-500'
+                        }`}
                         style={{ width: `${dataComparison.dataConsistency}%` }}
                       ></div>
                     </div>
@@ -206,6 +217,7 @@ export const ApiCallDetailsModal: React.FC<ApiCallDetailsModalProps> = ({ open, 
                       <table className="w-full text-left">
                         <thead>
                           <tr className="border-b">
+                            <th className="p-1">Type</th>
                             <th className="p-1">Record #</th>
                             <th className="p-1">Field</th>
                             <th className="p-1">REST Value</th>
@@ -215,6 +227,13 @@ export const ApiCallDetailsModal: React.FC<ApiCallDetailsModalProps> = ({ open, 
                         <tbody>
                           {dataComparison.fieldMismatches.slice(0, 10).map((mismatch, index) => (
                             <tr key={index} className="border-b">
+                              <td className="p-1 text-center">
+                                {mismatch.isWarning ? (
+                                  <span className="text-orange-500" title="Known issue">⚠</span>
+                                ) : (
+                                  <span className="text-red-500" title="Error">✗</span>
+                                )}
+                              </td>
                               <td className="p-1 font-mono">{mismatch.recordIndex}</td>
                               <td className="p-1 font-mono">{mismatch.field}</td>
                               <td className="p-1 font-mono break-all">{JSON.stringify(mismatch.restValue)}</td>

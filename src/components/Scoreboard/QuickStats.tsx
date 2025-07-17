@@ -14,7 +14,7 @@ export function QuickStats() {
         avgGraphqlTime: 0,
         totalRestPayload: 0,
         totalGraphqlPayload: 0,
-        successRate: 0,
+        dataConsistencyScore: 0,
         improvement: 0,
       };
     }
@@ -23,8 +23,10 @@ export function QuickStats() {
     const avgGraphqlTime = testResults.reduce((sum, r) => sum + r.graphqlApi.responseTime, 0) / testResults.length;
     const totalRestPayload = testResults.reduce((sum, r) => sum + r.restApi.payloadSize, 0);
     const totalGraphqlPayload = testResults.reduce((sum, r) => sum + r.graphqlApi.payloadSize, 0);
-    const successfulTests = testResults.filter(r => r.restApi.success && r.graphqlApi.success).length;
-    const successRate = (successfulTests / testResults.length) * 100;
+    const testsWithComparison = testResults.filter(r => r.dataComparison);
+    const dataConsistencyScore = testsWithComparison.length > 0 
+      ? testsWithComparison.reduce((sum, r) => sum + (r.dataComparison?.dataConsistency || 0), 0) / testsWithComparison.length
+      : 0;
     
     const improvement = avgRestTime > 0 ? ((avgRestTime - avgGraphqlTime) / avgRestTime) * 100 : 0;
 
@@ -33,7 +35,7 @@ export function QuickStats() {
       avgGraphqlTime,
       totalRestPayload,
       totalGraphqlPayload,
-      successRate,
+      dataConsistencyScore,
       improvement,
     };
   };
@@ -54,9 +56,9 @@ export function QuickStats() {
       winner: stats.totalRestPayload > stats.totalGraphqlPayload ? 'graphql' : stats.totalRestPayload < stats.totalGraphqlPayload ? 'rest' : null,
     },
     {
-      title: 'Success Rate',
-      restValue: `${stats.successRate.toFixed(1)}%`,
-      graphqlValue: `${stats.successRate.toFixed(1)}%`,
+      title: 'Data Consistency',
+      restValue: `${stats.dataConsistencyScore.toFixed(1)}%`,
+      graphqlValue: `${stats.dataConsistencyScore.toFixed(1)}%`,
       winner: null,
     },
     {
