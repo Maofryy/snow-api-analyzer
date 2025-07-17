@@ -1,20 +1,26 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BenchmarkProvider } from '../contexts/BenchmarkContext';
 import { ServiceNowInstance } from '../types';
 import { Header } from '../components/Header/Header';
 import { TestConfiguration } from '../components/TestConfiguration/TestConfiguration';
 import { ExecutionArea } from '../components/ExecutionArea/ExecutionArea';
 import { Scoreboard } from '../components/Scoreboard/Scoreboard';
+import { TestSpecsExplorer } from '../components/TestSpecs/TestSpecsExplorer';
 import { useBenchmark } from '../contexts/BenchmarkContext';
 import { makeAuthenticatedRequest, isAuthError, getAuthErrorMessage, getAuthStatus, isProductionMode } from '../services/authService';
 import { apiService } from '../services/apiService';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Info } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
+import { ProcessedTestSpec } from '../services/testSpecsService';
+import { TestExecutionService } from '../services/testExecutionService';
+import { Info, Play, BookOpen } from 'lucide-react';
 
 function BenchmarkDashboard() {
-  const { dispatch } = useBenchmark();
+  const { state, dispatch } = useBenchmark();
+  const [activeTab, setActiveTab] = useState('benchmark');
 
   useEffect(() => {
     const initializeConnection = async () => {
@@ -204,6 +210,74 @@ function BenchmarkDashboard() {
     }
   };
 
+  const handleRunTestFromSpecs = async (spec: ProcessedTestSpec) => {
+    // Map the test spec to the existing test configuration format
+    const categoryKey = (() => {
+      switch (spec.category) {
+        case 'Dot-Walking Performance': return 'dotWalkingTests';
+        case 'Multi-Table Queries': return 'multiTableTests';
+        case 'Schema Tailoring': return 'schemaTailoringTests';
+        case 'Performance at Scale': return 'performanceScaleTests';
+        case 'Real-World Scenarios': return 'realWorldScenarios';
+        default: return 'dotWalkingTests';
+      }
+    })();
+    
+    // Enable the specific test category and configure it
+    dispatch({
+      type: 'UPDATE_TEST_CONFIG',
+      payload: {
+        // First disable all tests
+        dotWalkingTests: { ...state.testConfiguration.dotWalkingTests, enabled: false },
+        multiTableTests: { ...state.testConfiguration.multiTableTests, enabled: false },
+        schemaTailoringTests: { ...state.testConfiguration.schemaTailoringTests, enabled: false },
+        performanceScaleTests: { ...state.testConfiguration.performanceScaleTests, enabled: false },
+        realWorldScenarios: { ...state.testConfiguration.realWorldScenarios, enabled: false },
+        // Then enable and configure the selected test
+        [categoryKey]: {
+          enabled: true,
+          parameters: {
+            table: spec.table,
+            recordLimit: spec.recordLimits[0], // Use first record limit as default
+          },
+          selectedVariants: spec.variant ? [spec.variant] : undefined,
+          selectedLimits: [spec.recordLimits[0]],
+        },
+      },
+    });
+    
+    // Wait a moment for the configuration to be applied
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Execute the tests using the test execution service
+    const result = await TestExecutionService.executeTests(
+      state.instance,
+      {
+        ...state.testConfiguration,
+        [categoryKey]: {
+          enabled: true,
+          parameters: {
+            table: spec.table,
+            recordLimit: spec.recordLimits[0],
+          },
+          selectedVariants: spec.variant ? [spec.variant] : undefined,
+          selectedLimits: [spec.recordLimits[0]],
+        },
+      },
+      dispatch
+    );
+    
+    if (result.success) {
+      console.log('Test execution completed successfully for spec:', spec.name);
+    } else {
+      console.error('Test execution failed:', result.error);
+    }
+  };
+
+  const handleSwitchToBenchmark = () => {
+    setActiveTab('benchmark');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -220,18 +294,40 @@ function BenchmarkDashboard() {
           </Alert>
         )}
         
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Left side - Test Configuration and Execution (70% width) */}
-          <div className="lg:col-span-3 space-y-8">
-            <TestConfiguration />
-            <ExecutionArea />
-          </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="benchmark" className="flex items-center gap-2">
+              <Play className="h-4 w-4" />
+              API Benchmark
+            </TabsTrigger>
+            <TabsTrigger value="test-specs" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Test Explorer
+            </TabsTrigger>
+          </TabsList>
           
-          {/* Right side - Scoreboard (30% width) */}
-          <div className="lg:col-span-1">
-            <Scoreboard />
-          </div>
-        </div>
+          <TabsContent value="benchmark" className="mt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+              {/* Left side - Test Configuration and Execution (70% width) */}
+              <div className="lg:col-span-3 space-y-8">
+                <TestConfiguration />
+                <ExecutionArea />
+              </div>
+              
+              {/* Right side - Scoreboard (30% width) */}
+              <div className="lg:col-span-1">
+                <Scoreboard />
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="test-specs" className="mt-0">
+            <TestSpecsExplorer 
+              onRunTest={handleRunTestFromSpecs}
+              onSwitchToBenchmark={handleSwitchToBenchmark}
+            />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

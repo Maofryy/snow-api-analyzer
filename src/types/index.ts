@@ -67,7 +67,9 @@ export interface DataComparisonResult {
     field: string;
     restValue: unknown;
     graphqlValue: unknown;
+    isWarning?: boolean;
   }>;
+  onlyKnownIssues?: boolean;
 }
 
 export interface TestResult {

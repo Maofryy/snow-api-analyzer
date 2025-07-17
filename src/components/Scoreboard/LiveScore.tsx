@@ -13,7 +13,7 @@ export function LiveScore() {
 
   return (
     <Card className="p-6">
-      <h3 className="text-lg font-semibold font-mono mb-4 text-center">Live Scoreboard</h3>
+      <h3 className="text-lg font-semibold font-mono mb-4 text-center">Performance Scoreboard</h3>
       
       <div className="space-y-4">
         <div className="text-center">

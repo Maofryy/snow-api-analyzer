@@ -8,8 +8,8 @@ import { CustomRequestManager } from './CustomRequestManager';
 import { RequestBuilder } from './RequestBuilder';
 import { useBenchmark } from '../../contexts/BenchmarkContext';
 import { testSpecs } from '../../specs/testSpecs';
-import { buildRestUrl, buildGraphQLQuery, buildCustomRestUrl, buildCustomGraphQLQuery } from '../../utils/apiBuilders';
-import { compareApiResponses } from '../../utils/dataComparison';
+import { buildRestUrl, buildGraphQLQuery, buildCustomRestUrl, buildCustomGraphQLQuery, buildMultiTableGraphQLQuery, validateMultiTableScenario } from '../../utils/apiBuilders';
+import { compareApiResponses, compareMultiTableApiResponses } from '../../utils/dataComparison';
 import { CustomRequest } from '../../types';
 import { makeAuthenticatedRequest, isAuthError, getAuthErrorMessage } from '../../services/authService';
 
@@ -111,11 +111,34 @@ export function TestConfiguration() {
           fields: string[];
           filter?: string;
         }>;
-        graphqlQuery: string;
         name: string;
       };
       limit: number;
     }) {
+      // Pre-flight validation with architectural monitoring
+      const validation = validateMultiTableScenario(scenario);
+      
+      if (!validation.valid) {
+        console.error('Multi-table scenario validation failed:', validation.errors);
+        dispatch({
+          type: 'UPDATE_TEST_STATUS',
+          payload: {
+            id: label,
+            testType: label,
+            status: 'failed',
+            progress: 0,
+            endTime: new Date(),
+          },
+        });
+        return;
+      }
+      
+      // Log performance warnings for architectural monitoring
+      if (validation.warnings.length > 0) {
+        console.warn(`Multi-table scenario warnings for ${scenario.name}:`, validation.warnings);
+        console.info(`Query complexity score: ${validation.complexityScore}`);
+      }
+      
       dispatch({
         type: 'UPDATE_TEST_STATUS',
         payload: {
@@ -175,22 +198,32 @@ export function TestConfiguration() {
         }
       }
 
-      // Execute single GraphQL query using the predefined query
+      // Build GraphQL query using the new multi-table builder
       const gqlEndpoint = 'api/now/graphql';
-      let graphqlQuery = scenario.graphqlQuery;
+      const gqlQueryResult = buildMultiTableGraphQLQuery({
+        restCalls: scenario.restCalls,
+        limit,
+        orderBy: 'sys_id'
+      });
       
-      // Add limit to GraphQL query if specified
-      if (limit) {
-        // Add limit to each table query in the GraphQL
-        graphqlQuery = graphqlQuery.replace(
-          /(\w+):\s*(\w+)\(queryConditions:\s*"([^"]*)"\)/g,
-          `$1: $2(queryConditions: "$3^ORDERBY sys_id", limit: ${limit})`
-        );
+      if (gqlQueryResult.errors.length > 0) {
+        console.error('GraphQL query build errors:', gqlQueryResult.errors);
+        dispatch({
+          type: 'UPDATE_TEST_STATUS',
+          payload: {
+            id: label,
+            testType: label,
+            status: 'failed',
+            progress: 0,
+            endTime: new Date(),
+          },
+        });
+        return;
       }
 
       const gqlOptions = {
         method: 'POST',
-        body: JSON.stringify({ query: graphqlQuery })
+        body: JSON.stringify({ query: gqlQueryResult.query })
       };
 
       const gqlResult = await measureApiCall(gqlEndpoint, gqlOptions);
@@ -200,17 +233,40 @@ export function TestConfiguration() {
         ? (totalRestTime < gqlResult.responseTime ? 'rest' : 'graphql')
         : (restSuccess ? 'rest' : 'graphql');
 
-      // For multi-table tests, data comparison is more complex
-      // For now, we'll skip detailed data comparison since structures differ significantly
-      const dataComparison = {
-        isEquivalent: true, // Assume equivalent for multi-table tests
-        recordCountMatch: true,
-        dataConsistency: 100,
-        issues: [],
-        restRecordCount: 0,
-        graphqlRecordCount: 0,
-        fieldMismatches: [],
-      };
+      // Multi-table data comparison using specialized comparison function
+      let dataComparison;
+      if (restSuccess && gqlResult.success && allRestResponses.length > 0 && gqlResult.responseBody) {
+        try {
+          dataComparison = compareMultiTableApiResponses(
+            allRestResponses,
+            gqlResult.responseBody,
+            scenario.restCalls
+          );
+        } catch (error) {
+          console.error('Multi-table data comparison failed:', error);
+          // Fallback to basic structure
+          dataComparison = {
+            isEquivalent: false,
+            recordCountMatch: false,
+            dataConsistency: 0,
+            issues: ['Data comparison failed due to error'],
+            restRecordCount: 0,
+            graphqlRecordCount: 0,
+            fieldMismatches: [],
+          };
+        }
+      } else {
+        // Fallback for failed API calls
+        dataComparison = {
+          isEquivalent: false,
+          recordCountMatch: false,
+          dataConsistency: 0,
+          issues: ['Unable to compare data due to API failures'],
+          restRecordCount: 0,
+          graphqlRecordCount: 0,
+          fieldMismatches: [],
+        };
+      }
 
       dispatch({
         type: 'ADD_TEST_RESULT',
@@ -243,7 +299,7 @@ export function TestConfiguration() {
           },
           graphqlApiCall: {
             endpoint: gqlEndpoint,
-            query: graphqlQuery,
+            query: gqlQueryResult.query,
             variables: undefined,
             requestBody: gqlOptions.body,
             responseBody: gqlResult.responseBody,
@@ -269,7 +325,7 @@ export function TestConfiguration() {
           },
           graphqlApiCall: {
             endpoint: gqlEndpoint,
-            query: graphqlQuery,
+            query: gqlQueryResult.query,
             variables: undefined,
             requestBody: gqlOptions.body,
             responseBody: gqlResult.responseBody,
@@ -526,20 +582,37 @@ export function TestConfiguration() {
           if (variantConfig && variantConfig.scenarios) {
             for (const scenario of variantConfig.scenarios) {
               for (const limit of limits) {
-                await runSingleTest({
-                  testKey: key,
-                  label: `${key}-${variant}-${scenario.name}-${limit}`,
-                  restParams: { 
-                    table: variantConfig.table, 
-                    fields: scenario.restFields, 
-                    limit 
-                  },
-                  gqlParams: { 
-                    table: variantConfig.table, 
-                    fields: scenario.graphqlFields, 
-                    limit 
-                  },
-                });
+                // Check if this is a multi-table scenario with restCalls
+                if (scenario.restCalls && scenario.restCalls.length > 0) {
+                  await runMultiTableTest({
+                    testKey: key,
+                    label: `${key}-${variant}-${scenario.name}-${limit}`,
+                    scenario,
+                    limit,
+                  });
+                } else {
+                  // Single table scenario - use scenario.table or fallback to variantConfig.table
+                  const tableSource = scenario.table || variantConfig.table;
+                  if (!tableSource) {
+                    console.error(`No table specified for scenario ${scenario.name} in ${variant}`);
+                    continue;
+                  }
+                  
+                  await runSingleTest({
+                    testKey: key,
+                    label: `${key}-${variant}-${scenario.name}-${limit}`,
+                    restParams: { 
+                      table: tableSource, 
+                      fields: scenario.restFields, 
+                      limit 
+                    },
+                    gqlParams: { 
+                      table: tableSource, 
+                      fields: scenario.graphqlFields, 
+                      limit 
+                    },
+                  });
+                }
               }
             }
           }
@@ -553,20 +626,37 @@ export function TestConfiguration() {
           if (variantConfig && variantConfig.scenarios) {
             for (const scenario of variantConfig.scenarios) {
               for (const limit of limits) {
-                await runSingleTest({
-                  testKey: key,
-                  label: `${key}-${variant}-${scenario.name}-${limit}`,
-                  restParams: { 
-                    table: variantConfig.table, 
-                    fields: scenario.restFields, 
-                    limit 
-                  },
-                  gqlParams: { 
-                    table: variantConfig.table, 
-                    fields: scenario.graphqlFields, 
-                    limit 
-                  },
-                });
+                // Check if this is a multi-table scenario with restCalls
+                if (scenario.restCalls && scenario.restCalls.length > 0) {
+                  await runMultiTableTest({
+                    testKey: key,
+                    label: `${key}-${variant}-${scenario.name}-${limit}`,
+                    scenario,
+                    limit,
+                  });
+                } else {
+                  // Single table scenario - use scenario.table or fallback to variantConfig.table
+                  const tableSource = scenario.table || variantConfig.table;
+                  if (!tableSource) {
+                    console.error(`No table specified for scenario ${scenario.name} in ${variant}`);
+                    continue;
+                  }
+                  
+                  await runSingleTest({
+                    testKey: key,
+                    label: `${key}-${variant}-${scenario.name}-${limit}`,
+                    restParams: { 
+                      table: tableSource, 
+                      fields: scenario.restFields, 
+                      limit 
+                    },
+                    gqlParams: { 
+                      table: tableSource, 
+                      fields: scenario.graphqlFields, 
+                      limit 
+                    },
+                  });
+                }
               }
             }
           }
@@ -580,20 +670,37 @@ export function TestConfiguration() {
             for (const scenario of variantConfig.scenarios) {
               const limits = variantConfig.recordLimits || [1, 5];
               for (const limit of limits) {
-                await runSingleTest({
-                  testKey: key,
-                  label: `${key}-${variant}-${scenario.name}-${limit}`,
-                  restParams: { 
-                    table: variantConfig.table, 
-                    fields: scenario.restFields, 
-                    limit 
-                  },
-                  gqlParams: { 
-                    table: variantConfig.table, 
-                    fields: scenario.graphqlFields, 
-                    limit 
-                  },
-                });
+                // Check if this is a multi-table scenario with restCalls
+                if (scenario.restCalls && scenario.restCalls.length > 0) {
+                  await runMultiTableTest({
+                    testKey: key,
+                    label: `${key}-${variant}-${scenario.name}-${limit}`,
+                    scenario,
+                    limit,
+                  });
+                } else {
+                  // Single table scenario - use scenario.table or fallback to variantConfig.table
+                  const tableSource = scenario.table || variantConfig.table;
+                  if (!tableSource) {
+                    console.error(`No table specified for scenario ${scenario.name} in ${variant}`);
+                    continue;
+                  }
+                  
+                  await runSingleTest({
+                    testKey: key,
+                    label: `${key}-${variant}-${scenario.name}-${limit}`,
+                    restParams: { 
+                      table: tableSource, 
+                      fields: scenario.restFields, 
+                      limit 
+                    },
+                    gqlParams: { 
+                      table: tableSource, 
+                      fields: scenario.graphqlFields, 
+                      limit 
+                    },
+                  });
+                }
               }
             }
           }
@@ -851,7 +958,7 @@ export function TestConfiguration() {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold font-mono">Test Configuration</h2>
+        <h2 className="text-lg font-semibold font-mono">Test Setup & Configuration</h2>
         <div className="flex space-x-2">
           <Button
             onClick={activeTab === 'predefined' ? handleRunTests : handleRunCustomRequests}

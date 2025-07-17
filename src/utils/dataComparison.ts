@@ -74,6 +74,7 @@ export interface DataComparisonResult {
     field: string;
     restValue: unknown;
     graphqlValue: unknown;
+    isWarning?: boolean;
   }>;
 }
 
@@ -171,6 +172,26 @@ setInterval(() => {
   }
 }, 60000);
 
+// Helper function to detect known REST reference field format differences
+function isKnownReferenceFieldFormatDifference(restValue: unknown, graphqlValue: unknown): boolean {
+  if (!restValue || !graphqlValue) return false;
+  
+  // Check if REST value is an object with 'link' and 'value' properties
+  if (typeof restValue === 'object' && restValue !== null) {
+    const restObj = restValue as Record<string, unknown>;
+    
+    // REST reference field format: {link: "...", value: "sys_id"}
+    if (restObj.link && restObj.value && typeof restObj.value === 'string') {
+      // GraphQL returns just the sys_id string
+      if (typeof graphqlValue === 'string' && restObj.value === graphqlValue) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
 function extractRestRecords(restResponse: unknown): Record<string, unknown>[] {
   if (!restResponse) return [];
   
@@ -212,6 +233,319 @@ function extractGraphQLRecords(graphqlResponse: unknown, tableName: string): Rec
   }
 }
 
+// Multi-table comparison result interface
+export interface MultiTableComparisonResult extends DataComparisonResult {
+  tableResults: Array<{
+    tableName: string;
+    restRecordCount: number;
+    graphqlRecordCount: number;
+    dataConsistency: number;
+    fieldMismatches: Array<{
+      recordIndex: number;
+      field: string;
+      restValue: unknown;
+      graphqlValue: unknown;
+      isWarning?: boolean;
+    }>;
+    issues: string[];
+  }>;
+}
+
+// Compare multi-table API responses (multiple REST calls vs single GraphQL)
+export function compareMultiTableApiResponses(
+  restResponses: unknown[], // Array of REST API responses
+  graphqlResponse: unknown,
+  restCalls: Array<{
+    table: string;
+    fields: string[];
+    filter?: string;
+  }>
+): MultiTableComparisonResult {
+  const aggregatedIssues: string[] = [];
+  const aggregatedFieldMismatches: Array<{
+    recordIndex: number;
+    field: string;
+    restValue: unknown;
+    graphqlValue: unknown;
+    isWarning?: boolean;
+  }> = [];
+  const tableResults: MultiTableComparisonResult['tableResults'] = [];
+
+  let totalRestRecords = 0;
+  let totalGraphqlRecords = 0;
+  let totalComparisons = 0;
+  let totalMatchingComparisons = 0;
+
+  // Validate input lengths match
+  if (restResponses.length !== restCalls.length) {
+    aggregatedIssues.push(`Mismatch between REST responses (${restResponses.length}) and REST calls (${restCalls.length})`);
+    return {
+      isEquivalent: false,
+      recordCountMatch: false,
+      dataConsistency: 0,
+      issues: aggregatedIssues,
+      restRecordCount: 0,
+      graphqlRecordCount: 0,
+      fieldMismatches: [],
+      tableResults: []
+    };
+  }
+
+  // Extract GraphQL response structure
+  let graphqlData: Record<string, unknown> = {};
+  try {
+    const response = graphqlResponse as Record<string, unknown>;
+    if (response?.data && typeof response.data === 'object') {
+      const data = response.data as Record<string, unknown>;
+      if (data.GlideRecord_Query && typeof data.GlideRecord_Query === 'object') {
+        graphqlData = data.GlideRecord_Query as Record<string, unknown>;
+      }
+    }
+  } catch (error) {
+    aggregatedIssues.push('Failed to parse GraphQL response structure');
+    logger.error('Error parsing GraphQL multi-table response', 'dataComparison', { graphqlResponse }, error as Error);
+  }
+
+  // Track which tables we've already processed to handle duplicates
+  const processedTables = new Set<string>();
+  
+  // Compare each table independently
+  for (let i = 0; i < restCalls.length; i++) {
+    const restCall = restCalls[i];
+    const restResponse = restResponses[i];
+    const tableName = restCall.table;
+    const expectedFields = restCall.fields;
+
+    // Extract REST records for this table
+    const restRecords = extractRestRecords(restResponse);
+    const restRecordCount = restRecords.length;
+    totalRestRecords += restRecordCount;
+
+    // Find corresponding GraphQL data by table name
+    let graphqlRecords: Record<string, unknown>[] = [];
+    let graphqlRecordCount = 0;
+
+    // For multi-table scenarios, GraphQL might combine results for the same table
+    // We'll use the first occurrence for comparison
+    if (graphqlData[tableName] && typeof graphqlData[tableName] === 'object') {
+      const tableData = graphqlData[tableName] as Record<string, unknown>;
+      if (Array.isArray(tableData._results)) {
+        graphqlRecords = tableData._results;
+      }
+    }
+
+    graphqlRecordCount = graphqlRecords.length;
+    totalGraphqlRecords += graphqlRecordCount;
+
+    // Check for duplicate table names in the query
+    const tableIdentifier = `${tableName}_${i}`; // Include index for uniqueness
+    const tableWarnings: string[] = [];
+    
+    if (processedTables.has(tableName)) {
+      tableWarnings.push(`Table ${tableName} appears multiple times in query - GraphQL results may be combined`);
+    }
+    processedTables.add(tableName);
+
+    // Compare this table's data using existing comparison logic
+    const tableComparison = compareTableData(
+      restRecords,
+      graphqlRecords,
+      expectedFields,
+      tableIdentifier
+    );
+
+    // Aggregate results
+    totalComparisons += tableComparison.totalComparisons;
+    totalMatchingComparisons += tableComparison.matchingComparisons;
+    
+    // Add table-specific field mismatches to aggregated list
+    aggregatedFieldMismatches.push(...tableComparison.fieldMismatches);
+
+    // Combine table warnings with comparison issues
+    const allTableIssues = [...tableWarnings, ...tableComparison.issues];
+
+    // Store table-specific results
+    tableResults.push({
+      tableName: tableIdentifier, // Use unique identifier
+      restRecordCount,
+      graphqlRecordCount,
+      dataConsistency: tableComparison.dataConsistency,
+      fieldMismatches: tableComparison.fieldMismatches,
+      issues: allTableIssues
+    });
+
+    // Add table-specific issues to aggregated issues
+    if (allTableIssues.length > 0) {
+      aggregatedIssues.push(`Table ${tableIdentifier}: ${allTableIssues.join(', ')}`);
+    }
+  }
+
+  // Calculate overall metrics
+  const recordCountMatch = totalRestRecords === totalGraphqlRecords;
+  if (!recordCountMatch) {
+    aggregatedIssues.push(`Overall record count mismatch: REST returned ${totalRestRecords}, GraphQL returned ${totalGraphqlRecords}`);
+  }
+
+  let dataConsistency: number;
+  if (totalComparisons === 0) {
+    dataConsistency = 0;
+  } else if (aggregatedFieldMismatches.length === 0) {
+    dataConsistency = 100;
+  } else {
+    dataConsistency = Math.floor((totalMatchingComparisons / totalComparisons) * 100);
+  }
+
+  // Check if all field mismatches across all tables are only known issues (warnings)
+  const totalWarnings = aggregatedFieldMismatches.filter(m => m.isWarning).length;
+  const totalErrors = aggregatedFieldMismatches.filter(m => !m.isWarning).length;
+  const onlyKnownIssues = aggregatedFieldMismatches.length > 0 && totalErrors === 0;
+
+  const isEquivalent = recordCountMatch && aggregatedFieldMismatches.length === 0 && dataConsistency === 100;
+
+  if (dataConsistency < 100) {
+    aggregatedIssues.push(`Overall data consistency: ${dataConsistency}% (${totalMatchingComparisons}/${totalComparisons} field comparisons matched)`);
+  }
+
+  if (aggregatedFieldMismatches.length > 0) {
+    if (totalErrors > 0) {
+      aggregatedIssues.push(`${totalErrors} total field mismatches found across all tables`);
+    }
+    if (totalWarnings > 0) {
+      aggregatedIssues.push(`${totalWarnings} total reference field format differences (known issue) across all tables`);
+    }
+  }
+
+  // Log performance metrics for multi-table comparison
+  logger.logPerformanceMetric('multiTable_comparison_tables', restCalls.length, 'count', 'dataComparison');
+  logger.logPerformanceMetric('multiTable_comparison_totalComparisons', totalComparisons, 'count', 'dataComparison');
+  logger.logPerformanceMetric('multiTable_comparison_matchingRate', totalMatchingComparisons / totalComparisons * 100, '%', 'dataComparison');
+
+  return {
+    isEquivalent,
+    recordCountMatch,
+    dataConsistency,
+    issues: aggregatedIssues,
+    restRecordCount: totalRestRecords,
+    graphqlRecordCount: totalGraphqlRecords,
+    fieldMismatches: aggregatedFieldMismatches,
+    tableResults,
+    onlyKnownIssues
+  };
+}
+
+// Helper function to compare data for a single table
+function compareTableData(
+  restRecords: Record<string, unknown>[],
+  graphqlRecords: Record<string, unknown>[],
+  expectedFields: string[],
+  tableIdentifier: string
+): {
+  totalComparisons: number;
+  matchingComparisons: number;
+  dataConsistency: number;
+  fieldMismatches: Array<{
+    recordIndex: number;
+    field: string;
+    restValue: unknown;
+    graphqlValue: unknown;
+    isWarning?: boolean;
+  }>;
+  issues: string[];
+} {
+  const issues: string[] = [];
+  const fieldMismatches: Array<{
+    recordIndex: number;
+    field: string;
+    restValue: unknown;
+    graphqlValue: unknown;
+    isWarning?: boolean;
+  }> = [];
+
+  // If no records in either, consider equivalent
+  if (restRecords.length === 0 && graphqlRecords.length === 0) {
+    return {
+      totalComparisons: 0,
+      matchingComparisons: 0,
+      dataConsistency: 100,
+      fieldMismatches: [],
+      issues: []
+    };
+  }
+
+  // Use optimized sorting with caching
+  const sortedRestRecords = getSortedRecords(restRecords, false);
+  const sortedGraphqlRecords = getSortedRecords(graphqlRecords, true);
+
+  let totalComparisons = 0;
+  let matchingComparisons = 0;
+
+  // Compare records
+  const minRecordCount = Math.min(sortedRestRecords.length, sortedGraphqlRecords.length);
+  const maxMismatches = 50; // Limit mismatches per table to prevent memory issues
+
+  for (let i = 0; i < minRecordCount; i++) {
+    const restRecord = sortedRestRecords[i];
+    const graphqlRecord = sortedGraphqlRecords[i];
+
+    // Compare each expected field
+    for (const field of expectedFields) {
+      totalComparisons++;
+      const restValue = normalizeValue(restRecord[field]);
+      const graphqlValue = normalizeValue(extractNestedGraphQLValue(graphqlRecord, field));
+
+      if (restValue === graphqlValue) {
+        matchingComparisons++;
+      } else {
+        // Check for known REST reference field format issue
+        const isReferenceFormatIssue = isKnownReferenceFieldFormatDifference(restValue, graphqlValue);
+        
+        if (isReferenceFormatIssue) {
+          // Treat as matching for consistency calculation
+          matchingComparisons++;
+          // But add as warning instead of error
+          if (fieldMismatches.length < maxMismatches) {
+            fieldMismatches.push({
+              recordIndex: i,
+              field,
+              restValue,
+              graphqlValue,
+              isWarning: true
+            });
+          }
+        } else {
+          // Limit the number of mismatches per table
+          if (fieldMismatches.length < maxMismatches) {
+            fieldMismatches.push({
+              recordIndex: i,
+              field,
+              restValue,
+              graphqlValue
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Calculate consistency for this table
+  let dataConsistency: number;
+  if (totalComparisons === 0) {
+    dataConsistency = 0;
+  } else if (fieldMismatches.length === 0) {
+    dataConsistency = 100;
+  } else {
+    dataConsistency = Math.floor((matchingComparisons / totalComparisons) * 100);
+  }
+
+  return {
+    totalComparisons,
+    matchingComparisons,
+    dataConsistency,
+    fieldMismatches,
+    issues
+  };
+}
+
 export function compareApiResponses(
   restResponse: unknown,
   graphqlResponse: unknown,
@@ -224,6 +558,7 @@ export function compareApiResponses(
     field: string;
     restValue: unknown;
     graphqlValue: unknown;
+    isWarning?: boolean;
   }> = [];
 
   // Extract records from both responses
@@ -277,14 +612,32 @@ export function compareApiResponses(
         if (restValue === graphqlValue) {
           matchingComparisons++;
         } else {
-          // Limit the number of mismatches to prevent memory issues
-          if (fieldMismatches.length < maxMismatches) {
-            fieldMismatches.push({
-              recordIndex: i,
-              field,
-              restValue,
-              graphqlValue
-            });
+          // Check for known REST reference field format issue
+          const isReferenceFormatIssue = isKnownReferenceFieldFormatDifference(restValue, graphqlValue);
+          
+          if (isReferenceFormatIssue) {
+            // Treat as matching for consistency calculation
+            matchingComparisons++;
+            // But add as warning instead of error
+            if (fieldMismatches.length < maxMismatches) {
+              fieldMismatches.push({
+                recordIndex: i,
+                field,
+                restValue,
+                graphqlValue,
+                isWarning: true
+              });
+            }
+          } else {
+            // Limit the number of mismatches to prevent memory issues
+            if (fieldMismatches.length < maxMismatches) {
+              fieldMismatches.push({
+                recordIndex: i,
+                field,
+                restValue,
+                graphqlValue
+              });
+            }
           }
         }
       }
@@ -302,6 +655,11 @@ export function compareApiResponses(
     dataConsistency = Math.floor((matchingComparisons / totalComparisons) * 100);
   }
   
+  // Check if all field mismatches are only known issues (warnings)
+  const warnings = fieldMismatches.filter(m => m.isWarning);
+  const errors = fieldMismatches.filter(m => !m.isWarning);
+  const onlyKnownIssues = fieldMismatches.length > 0 && errors.length === 0;
+
   // isEquivalent should be false if there are any field mismatches
   const isEquivalent = recordCountMatch && fieldMismatches.length === 0 && dataConsistency === 100;
 
@@ -310,7 +668,12 @@ export function compareApiResponses(
   }
 
   if (fieldMismatches.length > 0) {
-    issues.push(`${fieldMismatches.length} field mismatches found`);
+    if (errors.length > 0) {
+      issues.push(`${errors.length} field mismatches found`);
+    }
+    if (warnings.length > 0) {
+      issues.push(`${warnings.length} reference field format differences (known issue)`);
+    }
   }
 
   const result = {
@@ -320,7 +683,8 @@ export function compareApiResponses(
     issues,
     restRecordCount,
     graphqlRecordCount,
-    fieldMismatches
+    fieldMismatches,
+    onlyKnownIssues
   };
   
   // Log performance metrics

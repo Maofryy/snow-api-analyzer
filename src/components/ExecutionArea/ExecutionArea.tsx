@@ -1,13 +1,13 @@
 
 import React from 'react';
 import { LiveProgress } from './LiveProgress';
-import { TestConsole } from './TestConsole';
+import { LiveConsole } from './LiveConsole';
 
 export function ExecutionArea() {
   return (
     <div className="space-y-6">
       <LiveProgress />
-      <TestConsole />
+      <LiveConsole />
     </div>
   );
 }
