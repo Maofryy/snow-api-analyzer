@@ -5,7 +5,10 @@
       "Bash(npm run:*)",
       "Bash(npx tsc:*)",
       "Bash(npx eslint:*)",
-      "WebFetch(domain:www.servicenow.com)"
+      "WebFetch(domain:www.servicenow.com)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

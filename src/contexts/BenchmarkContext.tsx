@@ -12,6 +12,7 @@ interface BenchmarkState {
   performanceMetrics: PerformanceMetrics;
   isRunning: boolean;
   customRequests: CustomRequest[];
+  completionModalDismissed: boolean;
 }
 
 type BenchmarkAction =
@@ -24,7 +25,8 @@ type BenchmarkAction =
   | { type: 'UPDATE_METRICS'; payload: PerformanceMetrics }
   | { type: 'ADD_CUSTOM_REQUEST'; payload: CustomRequest }
   | { type: 'UPDATE_CUSTOM_REQUEST'; payload: CustomRequest }
-  | { type: 'DELETE_CUSTOM_REQUEST'; payload: string };
+  | { type: 'DELETE_CUSTOM_REQUEST'; payload: string }
+  | { type: 'SET_COMPLETION_MODAL_DISMISSED'; payload: boolean };
 
 const getInitialState = (): BenchmarkState => {
   const storedCredentials = retrieveCredentials();
@@ -93,6 +95,7 @@ const getInitialState = (): BenchmarkState => {
   },
     isRunning: false,
     customRequests: storedCustomRequests,
+    completionModalDismissed: false,
   };
 };
 
@@ -132,7 +135,8 @@ function benchmarkReducer(state: BenchmarkState, action: BenchmarkAction): Bench
         ...state, 
         testResults: [], 
         testStatuses: [], 
-        performanceMetrics: initialState.performanceMetrics 
+        performanceMetrics: initialState.performanceMetrics,
+        completionModalDismissed: false
       };
     case 'UPDATE_METRICS':
       return { ...state, performanceMetrics: action.payload };
@@ -162,6 +166,8 @@ function benchmarkReducer(state: BenchmarkState, action: BenchmarkAction): Bench
         customRequests: filteredCustomRequests
       };
     }
+    case 'SET_COMPLETION_MODAL_DISMISSED':
+      return { ...state, completionModalDismissed: action.payload };
     default:
       return state;
   }
