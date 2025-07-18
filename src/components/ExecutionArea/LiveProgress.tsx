@@ -1,17 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Zap, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Clock, Zap, CheckCircle, XCircle, AlertCircle, Trophy } from "lucide-react";
 import { useBenchmark } from "../../contexts/BenchmarkContext";
 import { TestStatus } from "../../types";
 import { ApiCallDetailsModal } from "./ApiCallDetailsModal";
+import { TestCompletionModal } from "./TestCompletionModal";
 
 export function LiveProgress() {
-    const { state } = useBenchmark();
-    const { testStatuses, isRunning } = state;
+    const { state, dispatch } = useBenchmark();
+    const { testStatuses, isRunning, testResults, performanceMetrics, completionModalDismissed } = state;
     const [selectedTest, setSelectedTest] = useState<TestStatus | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [showCompletionModal, setShowCompletionModal] = useState(false);
+    const [hasShownCompletion, setHasShownCompletion] = useState(false);
 
     const handleTestClick = (testStatus: TestStatus) => {
         if (testStatus.restApiCall || testStatus.graphqlApiCall) {
@@ -19,6 +23,35 @@ export function LiveProgress() {
             setIsModalOpen(true);
         }
     };
+
+    // Check if all tests are complete and show completion modal
+    useEffect(() => {
+        const completedTests = testStatuses.filter(status => status.status === 'completed');
+        const failedTests = testStatuses.filter(status => status.status === 'failed');
+        const allTestsFinished = testStatuses.length > 0 && 
+                                !isRunning && 
+                                (completedTests.length + failedTests.length) === testStatuses.length;
+        
+        const hasValidResults = testResults.length > 0 && 
+                               testResults.length === completedTests.length; // Only count successful tests in results
+
+        const allTestsCompleted = allTestsFinished && hasValidResults && !hasShownCompletion && !completionModalDismissed;
+
+        if (allTestsCompleted) {
+            setHasShownCompletion(true);
+            // Small delay to let the UI settle and ensure all data is updated
+            setTimeout(() => {
+                setShowCompletionModal(true);
+            }, 1500);
+        }
+    }, [testStatuses, isRunning, testResults, hasShownCompletion, completionModalDismissed]);
+
+    // Reset completion state when new tests start
+    useEffect(() => {
+        if (isRunning && hasShownCompletion) {
+            setHasShownCompletion(false);
+        }
+    }, [isRunning, hasShownCompletion]);
 
     if (!isRunning && testStatuses.length === 0) {
         return (
@@ -40,15 +73,38 @@ export function LiveProgress() {
                 graphqlApiCall={selectedTest?.graphqlApiCall}
                 dataComparison={selectedTest?.dataComparison}
             />
+            <TestCompletionModal
+                open={showCompletionModal}
+                onClose={() => {
+                    setShowCompletionModal(false);
+                    dispatch({ type: 'SET_COMPLETION_MODAL_DISMISSED', payload: true });
+                }}
+                testResults={testResults}
+                performanceMetrics={performanceMetrics}
+            />
             <Card className="p-6">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold font-mono">Test Execution Status</h3>
-                    <div className="flex items-center space-x-2 text-sm font-mono text-gray-600">
-                        <span>{testStatuses.filter(s => s.status === 'completed').length} completed</span>
-                        <span>•</span>
-                        <span>{testStatuses.filter(s => s.status === 'running').length} running</span>
-                        <span>•</span>
-                        <span>{testStatuses.filter(s => s.status === 'failed').length} failed</span>
+                    <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2 text-sm font-mono text-gray-600">
+                            <span>{testStatuses.filter(s => s.status === 'completed').length} completed</span>
+                            <span>•</span>
+                            <span>{testStatuses.filter(s => s.status === 'running').length} running</span>
+                            <span>•</span>
+                            <span>{testStatuses.filter(s => s.status === 'failed').length} failed</span>
+                        </div>
+                        {/* Show results button when tests have been completed previously */}
+                        {!isRunning && testResults.length > 0 && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setShowCompletionModal(true)}
+                                className="text-xs"
+                            >
+                                <Trophy className="w-3 h-3 mr-1" />
+                                View Results
+                            </Button>
+                        )}
                     </div>
                 </div>
                 <div className="space-y-4">

@@ -14,6 +14,14 @@ This application was designed to:
 
 ## 🚀 Features
 
+### 🆕 Latest Updates
+- **🔍 Live Console System**: Real-time test monitoring with advanced filtering and search
+- **🎉 Test Completion Modal**: Celebratory experience with comprehensive results and export options
+- **📊 Test Specs Explorer**: Interactive test scenario browsing with code preview
+- **🛠️ Custom Request Manager**: Build and manage custom REST vs GraphQL tests
+- **⌨️ Keyboard Shortcuts**: Enhanced productivity (Ctrl+F, Ctrl+E, Ctrl+K)
+- **📱 Responsive Design**: Mobile-friendly interface with professional animations
+
 ### Test Categories
 
 1. **🚀 Dot-Walking Performance Tests**
@@ -40,12 +48,15 @@ This application was designed to:
 ### Key Capabilities
 
 - **Dual-Mode Authentication**: Automatic environment detection (development/production)
-- **Live Progress Tracking**: Real-time test execution with progress indicators
+- **Live Console System**: Real-time test monitoring with filtering, search, and export capabilities
+- **Test Completion Modal**: Celebratory animations with comprehensive results and sharing options
+- **Test Specs Explorer**: Interactive browsing of 50+ test scenarios with code preview
+- **Custom Request Manager**: Build, save, and manage custom REST vs GraphQL comparisons
 - **Data Comparison Scoring**: Visual indicators (✓/✗ with percentages) showing data consistency
 - **Detailed API Call Analysis**: View exact requests/responses with copy functionality ("See Details" button)
-- **Custom Request Testing**: Create and save custom REST vs GraphQL comparisons
 - **Performance Metrics**: Response times, payload sizes, and winner determination
-- **Configurable Test Parameters**: Customize record limits, test variants, and scenarios
+- **Keyboard Shortcuts**: Enhanced productivity with Ctrl+F (search), Ctrl+E (export), Ctrl+K (clear)
+- **Responsive Design**: Mobile-friendly interface with professional animations and accessibility
 - **Single-File Deployment**: Optimized build for easy ServiceNow instance deployment
 
 ## 🛠️ Installation & Setup
@@ -107,22 +118,40 @@ npm run build
    - Uses session token authentication
    - No manual connection required
 
-### 2. **Configure Tests**
+### 2. **Choose Your Mode**
+
+#### **API Benchmark Mode** (Classic)
+   - Configure test categories and parameters
+   - Run comprehensive batch tests
+   - Monitor via Live Console with real-time filtering
+   - Celebrate completion with results modal
+
+#### **Test Explorer Mode** (NEW!)
+   - Browse 50+ test scenarios interactively
+   - Understand each test with detailed descriptions
+   - Preview generated REST/GraphQL code
+   - Execute individual tests on demand
+
+### 3. **Configure Tests**
    - Enable/disable test categories based on your interests
    - Select specific test variants (e.g., singleLevel, multiLevel, complexTraversal)
    - Choose record limits for different scenarios (25, 50, 100, etc.)
+   - Create custom requests with the Custom Request Manager
    - Expand test panels to see detailed configurations
 
-### 3. **Run Benchmarks**
+### 4. **Run Benchmarks**
    - Click "Run Tests" to execute all enabled test categories
-   - Monitor live progress with real-time status indicators
+   - Monitor live progress with real-time status indicators in the Live Console
+   - Use keyboard shortcuts: Ctrl+F (search), Ctrl+E (export), Ctrl+K (clear)
+   - Filter logs by test type, level, API, or data consistency
    - Watch for data comparison scores (✓ green = equivalent, ✗ red = issues)
 
-### 4. **Analyze Results**
-   - **Live Progress**: See immediate status updates and data consistency scores
+### 5. **Analyze Results**
+   - **Live Console**: Real-time test monitoring with advanced filtering and search
+   - **Test Completion Modal**: Celebratory experience with comprehensive results and export options
    - **API Call Details**: Click "See Details" to view exact requests/responses with copy functionality
    - **Copy Functionality**: Use copy icons to extract request/response data for your own testing
-   - **Custom Requests**: Create your own test scenarios and compare them directly
+   - **Custom Requests**: Create and test your own scenarios
    - **Scoreboard**: Review overall performance metrics and winner statistics
 
 ## 🔍 What to Look For
@@ -220,15 +249,25 @@ Look for scenarios where GraphQL significantly outperforms REST:
 src/
 ├── components/           # React components
 │   ├── ExecutionArea/   # Test execution and progress
+│   │   ├── LiveConsole/ # Real-time monitoring system
+│   │   └── TestCompletionModal.tsx # Celebration modal
 │   ├── Header/          # Instance connection and status
 │   ├── Scoreboard/      # Results display
 │   ├── TestConfiguration/ # Test setup and custom requests
+│   ├── TestSpecs/       # Test explorer components
 │   └── ui/              # shadcn/ui components
 ├── contexts/            # React context for state management
 ├── services/            # Authentication and API services
 ├── specs/               # Test specifications and scenarios
 ├── types/               # TypeScript definitions
 └── utils/               # API builders, environment detection, utilities
+docs/                    # Comprehensive documentation
+├── README.md           # Documentation overview
+├── CLAUDE.md           # Developer guide
+├── GUIDE_UTILISATION_DETAILLE.md # User manual (French)
+├── IMPROVEMENTS.md     # Security & performance improvements
+├── PRESENTATION_COLLEGUES.md # Team presentation (French)
+└── customRequest.md    # Custom request feature documentation
 ```
 
 ### Key Architecture Files
@@ -333,6 +372,16 @@ For issues or questions:
 3. Review test configurations for field availability
 4. Test with the live demo: https://elosarldemo1.service-now.com/api/elosa/api_benchmark/home
 5. Open an issue with detailed error information and console logs
+
+## 📚 Documentation
+
+For comprehensive documentation, visit the [docs folder](./docs/):
+
+- **[Technical Guide](./docs/CLAUDE.md)**: Complete developer documentation and architecture
+- **[User Manual](./docs/GUIDE_UTILISATION_DETAILLE.md)**: Detailed usage guide (French)
+- **[Improvements](./docs/IMPROVEMENTS.md)**: Security and performance enhancements
+- **[Team Presentation](./docs/PRESENTATION_COLLEGUES.md)**: Quick overview for team members (French)
+- **[Custom Requests](./docs/customRequest.md)**: Custom request feature documentation
 
 ---
 

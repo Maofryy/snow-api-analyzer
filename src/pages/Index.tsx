@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { BenchmarkProvider } from '../contexts/BenchmarkContext';
 import { ServiceNowInstance } from '../types';
 import { Header } from '../components/Header/Header';
@@ -8,11 +8,9 @@ import { ExecutionArea } from '../components/ExecutionArea/ExecutionArea';
 import { Scoreboard } from '../components/Scoreboard/Scoreboard';
 import { TestSpecsExplorer } from '../components/TestSpecs/TestSpecsExplorer';
 import { useBenchmark } from '../contexts/BenchmarkContext';
-import { makeAuthenticatedRequest, isAuthError, getAuthErrorMessage, getAuthStatus, isProductionMode } from '../services/authService';
+import { isAuthError, getAuthErrorMessage, getAuthStatus, isProductionMode } from '../services/authService';
 import { apiService } from '../services/apiService';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Button } from '../components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { ProcessedTestSpec } from '../services/testSpecsService';
 import { TestExecutionService } from '../services/testExecutionService';
@@ -25,28 +23,13 @@ function BenchmarkDashboard() {
   useEffect(() => {
     const initializeConnection = async () => {
       const authStatus = getAuthStatus();
-      console.log('Initializing connection with auth status:', authStatus);
-      console.log('Window location:', window.location.href);
-      console.log('Window globals check:', {
-        // @ts-ignore
-        g_ck: typeof window.g_ck !== 'undefined',
-        // @ts-ignore
-        NOW: typeof window.NOW !== 'undefined',
-        // @ts-ignore
-        g_user: typeof window.g_user !== 'undefined'
-      });
+      // Initialize connection based on auth status
       
       if (authStatus.isSessionAuth) {
         // Production mode - fetch instance info then test connection
-        console.log('Using production mode (session auth)');
         await fetchInstanceInfo();
       } else {
         // Development mode - use environment variables for basic auth
-        console.log('Environment variables:', {
-          url: import.meta.env.VITE_INSTANCE_URL,
-          username: import.meta.env.VITE_APP_USER,
-          password: import.meta.env.VITE_APP_PASSWORD ? '***' : 'undefined'
-        });
         
         const instance: ServiceNowInstance = {
           url: import.meta.env.VITE_INSTANCE_URL,
@@ -58,32 +41,62 @@ function BenchmarkDashboard() {
         };
 
         if (instance.url && instance.username && instance.password) {
-          console.log('Setting instance for development mode:', {
-            url: instance.url,
-            username: instance.username,
-            password: instance.password ? '***' : 'undefined',
-            authMode: instance.authMode
-          });
           // Set instance for development mode
           apiService.setInstance(instance);
           await testConnection();
-        } else {
-          console.error('Missing environment variables for development mode:', {
-            url: !!instance.url,
-            username: !!instance.username,
-            password: !!instance.password
-          });
         }
       }
     };
 
     initializeConnection();
+  }, []);
+
+  const testConnection = useCallback(async () => {
+    try {
+      const result = await apiService.testConnection();
+      
+      if (result.success) {
+        const authStatus = getAuthStatus();
+        
+        // For production mode, get instance info from current context
+        if (authStatus.isSessionAuth) {
+          dispatch({
+            type: 'SET_INSTANCE',
+            payload: {
+              url: window.location.origin,
+              username: 'current_user',
+              password: '',
+              token: '',
+              connected: true,
+              authMode: 'session'
+            },
+          });
+        } else {
+          // Development mode - instance already set via apiService.setInstance()
+          const instance: ServiceNowInstance = {
+            url: import.meta.env.VITE_INSTANCE_URL,
+            username: import.meta.env.VITE_APP_USER,
+            password: import.meta.env.VITE_APP_PASSWORD,
+            token: '',
+            connected: true,
+            authMode: 'basic'
+          };
+          
+          dispatch({
+            type: 'SET_INSTANCE',
+            payload: instance,
+          });
+        }
+      }
+    } catch (error) {
+      if (isAuthError(error)) {
+        getAuthErrorMessage(error);
+      }
+    }
   }, [dispatch]);
 
-  const fetchInstanceInfo = async () => {
+  const fetchInstanceInfo = useCallback(async () => {
     try {
-      console.log('Production mode: fetching token first...');
-      
       // First, get a token to authenticate subsequent requests
       const tokenResponse = await fetch('/api/elosa/api_benchmark/get-token', {
         method: 'GET',
@@ -99,7 +112,6 @@ function BenchmarkDashboard() {
       }
       
       const tokenData = await tokenResponse.json();
-      console.log('Token response:', tokenData);
       
       // Extract token from nested response structure
       const token = tokenData.result?.token;
@@ -107,10 +119,7 @@ function BenchmarkDashboard() {
         throw new Error('No token found in response');
       }
       
-      console.log('Token fetched successfully');
-      
       // Now fetch instance info using the token
-      console.log('Fetching instance info with token:', token);
       const instanceResponse = await fetch('/api/elosa/api_benchmark/instance-info', {
         method: 'GET',
         credentials: 'include',
@@ -126,11 +135,9 @@ function BenchmarkDashboard() {
       }
       
       const instanceData = await instanceResponse.json();
-      console.log('Instance info response:', instanceData);
       
       // Extract instance data from nested response structure
       const instanceInfo = instanceData.result || instanceData;
-      console.log('Extracted instance info:', instanceInfo);
       
       if (!instanceInfo.url || !instanceInfo.username) {
         throw new Error('Invalid instance info response - missing url or username');
@@ -146,69 +153,14 @@ function BenchmarkDashboard() {
         authMode: 'session'
       };
       
-      console.log('Setting instance for production mode:', instance);
       apiService.setInstance(instance);
       
       // Now test connection - this will trigger token fetch via tokenManager
-      console.log('Calling testConnection...');
       await testConnection();
     } catch (error) {
-      console.error('Error in production mode setup:', error);
+      // Error in production mode setup
     }
-  };
-
-  const testConnection = async () => {
-    try {
-      console.log('Starting connection test...');
-      const result = await apiService.testConnection();
-      console.log('Connection test result:', result);
-      
-      if (result.success) {
-        const authStatus = getAuthStatus();
-        console.log('Auth status:', authStatus);
-        
-        // For production mode, get instance info from current context
-        if (authStatus.isSessionAuth) {
-          console.log('Setting connected instance for production mode');
-          dispatch({
-            type: 'SET_INSTANCE',
-            payload: {
-              url: window.location.origin,
-              username: 'current_user',
-              password: '',
-              token: '',
-              connected: true,
-              authMode: 'session'
-            },
-          });
-        } else {
-          // Development mode - instance already set via apiService.setInstance()
-          console.log('Setting connected instance for development mode');
-          const instance: ServiceNowInstance = {
-            url: import.meta.env.VITE_INSTANCE_URL,
-            username: import.meta.env.VITE_APP_USER,
-            password: import.meta.env.VITE_APP_PASSWORD,
-            token: '',
-            connected: true,
-            authMode: 'basic'
-          };
-          
-          dispatch({
-            type: 'SET_INSTANCE',
-            payload: instance,
-          });
-        }
-      } else {
-        console.error('Connection test failed:', result.error);
-      }
-    } catch (error) {
-      console.error('Error testing connection:', error);
-      
-      if (isAuthError(error)) {
-        console.error('Authentication error:', getAuthErrorMessage(error));
-      }
-    }
-  };
+  }, [testConnection]);
 
   const handleRunTestFromSpecs = async (spec: ProcessedTestSpec) => {
     // Map the test spec to the existing test configuration format
@@ -267,10 +219,8 @@ function BenchmarkDashboard() {
       dispatch
     );
     
-    if (result.success) {
-      console.log('Test execution completed successfully for spec:', spec.name);
-    } else {
-      console.error('Test execution failed:', result.error);
+    if (!result.success) {
+      // Test execution failed
     }
   };
 

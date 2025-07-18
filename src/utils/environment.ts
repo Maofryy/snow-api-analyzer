@@ -21,11 +21,8 @@ export function detectEnvironment(): Environment {
     return cachedEnvironment;
   }
 
-  console.log('Detecting environment (first time)...');
-  
   // Check if we're running in Vite dev mode
   if (import.meta.env.DEV) {
-    console.log('Environment: development (Vite dev mode)');
     cachedEnvironment = 'development';
     return cachedEnvironment;
   }
@@ -34,25 +31,14 @@ export function detectEnvironment(): Environment {
   if (typeof window !== 'undefined') {
     // ServiceNow has specific global variables like g_ck, NOW, etc.
     const hasServiceNowGlobals = 
-      // @ts-ignore - ServiceNow globals
+      // @ts-expect-error - ServiceNow globals
       window.g_ck !== undefined || 
-      // @ts-ignore - ServiceNow globals
+      // @ts-expect-error - ServiceNow globals
       window.NOW !== undefined ||
-      // @ts-ignore - ServiceNow globals
+      // @ts-expect-error - ServiceNow globals
       window.g_user !== undefined;
 
-    console.log('ServiceNow globals check:', {
-      // @ts-ignore
-      g_ck: typeof window.g_ck !== 'undefined',
-      // @ts-ignore
-      NOW: typeof window.NOW !== 'undefined',
-      // @ts-ignore
-      g_user: typeof window.g_user !== 'undefined',
-      hasServiceNowGlobals
-    });
-
     if (hasServiceNowGlobals) {
-      console.log('Environment: production (ServiceNow globals detected)');
       cachedEnvironment = 'production';
       return cachedEnvironment;
     }
@@ -65,13 +51,7 @@ export function detectEnvironment(): Environment {
       hostname.includes('.service-now.com') ||
       hostname.includes('.servicenow.com');
 
-    console.log('Domain check:', {
-      hostname,
-      isServiceNowDomain
-    });
-
     if (isServiceNowDomain) {
-      console.log('Environment: production (ServiceNow domain detected)');
       cachedEnvironment = 'production';
       return cachedEnvironment;
     }
@@ -79,18 +59,13 @@ export function detectEnvironment(): Environment {
 
   // Check environment variables
   const envMode = import.meta.env.VITE_ENV_MODE as Environment;
-  console.log('Environment variable check:', {
-    VITE_ENV_MODE: envMode
-  });
   
   if (envMode === 'production' || envMode === 'development') {
-    console.log(`Environment: ${envMode} (from environment variable)`);
     cachedEnvironment = envMode;
     return cachedEnvironment;
   }
 
   // Default to development for safety
-  console.log('Environment: development (default fallback)');
   cachedEnvironment = 'development';
   return cachedEnvironment;
 }
@@ -141,7 +116,7 @@ export function getEnvironmentInfo() {
     userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'N/A',
     hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
     href: typeof window !== 'undefined' ? window.location.href : 'N/A',
-    // @ts-ignore - ServiceNow globals
+    // @ts-expect-error - ServiceNow globals
     hasServiceNowGlobals: typeof window !== 'undefined' && (window.g_ck !== undefined || window.NOW !== undefined)
   };
 }
