@@ -799,7 +799,9 @@ export function TestConfiguration() {
       async function measureApiCall(
         url: string, 
         options: RequestInit, 
-        iterations: number = 3
+        iterations: number = 3,
+        apiType: string = 'Unknown',
+        baseProgress: number = 0
       ): Promise<{ responseTime: number; payloadSize: number; success: boolean; responseBody?: unknown; allResponseTimes: number[] }> {
         const times: number[] = [];
         let finalResponseBody: unknown;
@@ -807,6 +809,24 @@ export function TestConfiguration() {
         let success = true;
 
         for (let i = 0; i < iterations; i++) {
+          // Update progress before each iteration
+          const iterationProgress = ((i + 1) / iterations) * 50; // Each API type gets 50% of progress
+          const currentProgress = baseProgress + iterationProgress;
+          const finalProgress = Math.min(currentProgress, 100);
+          
+          dispatch({
+            type: 'UPDATE_TEST_STATUS',
+            payload: {
+              id: testId,
+              testType: `Custom: ${request.name}`,
+              status: 'running',
+              progress: finalProgress,
+              startTime: new Date(),
+            },
+          });
+          
+          // Allow UI to update
+          await new Promise(resolve => setTimeout(resolve, 200));
           try {
             const start = performance.now();
             const response = await makeAuthenticatedRequest(url, options, state.instance);
@@ -851,13 +871,11 @@ export function TestConfiguration() {
       let gqlCallResult: Awaited<ReturnType<typeof measureApiCall>>;
 
       if (runRestFirst) {
-        restCallResult = await measureApiCall(restEndpoint, restOptions);
-        await new Promise(resolve => setTimeout(resolve, 200));
-        gqlCallResult = await measureApiCall(gqlEndpoint, gqlOptions);
+        restCallResult = await measureApiCall(restEndpoint, restOptions, 3, 'REST', 0);
+        gqlCallResult = await measureApiCall(gqlEndpoint, gqlOptions, 3, 'GraphQL', 50);
       } else {
-        gqlCallResult = await measureApiCall(gqlEndpoint, gqlOptions);
-        await new Promise(resolve => setTimeout(resolve, 200));
-        restCallResult = await measureApiCall(restEndpoint, restOptions);
+        gqlCallResult = await measureApiCall(gqlEndpoint, gqlOptions, 3, 'GraphQL', 0);
+        restCallResult = await measureApiCall(restEndpoint, restOptions, 3, 'REST', 50);
       }
 
       // Compare performance

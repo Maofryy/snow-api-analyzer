@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import confetti from "canvas-confetti";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -251,6 +251,9 @@ export function TestCompletionModal({ open, onClose, testResults, performanceMet
                         <span>Benchmark Complete!</span>
                         <Trophy className="w-8 h-8 text-yellow-500" />
                     </DialogTitle>
+                    <DialogDescription className="text-center text-muted-foreground">
+                        View detailed results and performance metrics from your API benchmark test
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6">

@@ -105,6 +105,22 @@ export const TestSpecsExplorer: React.FC<TestSpecsExplorerProps> = ({ onRunTest,
                                     )}
                                 </div>
 
+                                {/* GraphQL Record Limit Notice for Performance Scale Tests */}
+                                {selectedCategory === 'performanceScaleTests' && (
+                                    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                                        <div className="flex items-start gap-3">
+                                            <div className="text-amber-600 text-lg">⚠️</div>
+                                            <div>
+                                                <h3 className="font-medium text-amber-800 mb-1">GraphQL Record Limit Notice</h3>
+                                                <p className="text-sm text-amber-700">
+                                                    By default, GraphQL queries are limited to 1000 records. To test large datasets above this limit, 
+                                                    update the system property <code className="bg-amber-100 px-1 rounded font-mono text-amber-800">glide.graphql.gliderecord.maxResults.limit</code> in your ServiceNow instance.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Specs Display */}
                                 <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "space-y-4"}>
                                     {filteredSpecs.map((spec) => (

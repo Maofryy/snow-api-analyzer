@@ -28,7 +28,11 @@ export class TestExecutionService {
       async function measureApiCall(
         endpoint: string, 
         options: RequestInit, 
-        iterations: number = 3
+        iterations: number = 3,
+        testId?: string,
+        testDisplayName?: string,
+        isRestCall?: boolean,
+        baseProgress?: number
       ): Promise<{ responseTime: number; payloadSize: number; success: boolean; responseBody?: unknown; allResponseTimes: number[] }> {
         const times: number[] = [];
         let finalResponseBody: unknown;
@@ -36,6 +40,27 @@ export class TestExecutionService {
         let success = true;
 
         for (let i = 0; i < iterations; i++) {
+          // Update progress before starting each iteration
+          if (testId && testDisplayName) {
+            const iterationProgress = ((i + 1) / iterations) * 50; // Each API type gets 50% of progress
+            const currentProgress = (baseProgress || 0) + iterationProgress;
+            const finalProgress = Math.min(currentProgress, 100);
+            
+            dispatch({
+              type: 'UPDATE_TEST_STATUS',
+              payload: {
+                id: testId,
+                testType: testDisplayName,
+                status: 'running',
+                progress: finalProgress,
+                startTime: new Date().toISOString(),
+              },
+            });
+            
+            // Allow UI to update before starting the API call
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+
           try {
             const start = performance.now();
             const response = await makeAuthenticatedRequest(endpoint, options, instance);
@@ -139,6 +164,17 @@ export class TestExecutionService {
                 }
 
                 // Execute REST calls (multiple calls)
+                dispatch({
+                  type: 'UPDATE_TEST_STATUS',
+                  payload: {
+                    id: testId,
+                    testType: testDisplayName,
+                    status: 'running',
+                    progress: 5,
+                    startTime: new Date().toISOString(),
+                  },
+                });
+                
                 const restStartTime = performance.now();
                 const restResponses = [];
                 
@@ -147,20 +183,16 @@ export class TestExecutionService {
                   const restUrl = buildRestUrl(call.table, call.fields, call.filter || '', limit);
                   const restOptions = { method: 'GET', headers: { 'Accept': 'application/json' } };
                   
-                  const restResult = await measureApiCall(restUrl, restOptions, 1);
+                  const restResult = await measureApiCall(
+                    restUrl, 
+                    restOptions, 
+                    1, 
+                    testId, 
+                    testDisplayName, 
+                    true, 
+                    (i / variantSpec.restCalls.length) * 50
+                  );
                   restResponses.push(restResult);
-                  
-                  // Update progress
-                  dispatch({
-                    type: 'UPDATE_TEST_STATUS',
-                    payload: {
-                      id: testId,
-                      testType: testDisplayName,
-                      status: 'running',
-                      progress: ((i + 1) / variantSpec.restCalls.length) * 50,
-                      startTime: new Date().toISOString(),
-                    },
-                  });
                 }
 
                 // Calculate total REST time and payload size
@@ -169,6 +201,17 @@ export class TestExecutionService {
                 const restSuccess = restResponses.every(r => r.success);
 
                 // Execute GraphQL call (single call)
+                dispatch({
+                  type: 'UPDATE_TEST_STATUS',
+                  payload: {
+                    id: testId,
+                    testType: testDisplayName,
+                    status: 'running',
+                    progress: 55,
+                    startTime: new Date().toISOString(),
+                  },
+                });
+                
                 const graphqlQuery = buildMultiTableGraphQLQuery(variantSpec, limit);
                 const graphqlUrl = `${instance.url}/api/now/graphql`;
                 const graphqlOptions = {
@@ -177,19 +220,7 @@ export class TestExecutionService {
                   body: JSON.stringify({ query: graphqlQuery })
                 };
 
-                const graphqlResult = await measureApiCall(graphqlUrl, graphqlOptions, 1);
-
-                // Update progress
-                dispatch({
-                  type: 'UPDATE_TEST_STATUS',
-                  payload: {
-                    id: testId,
-                    testType: testDisplayName,
-                    status: 'running',
-                    progress: 75,
-                    startTime: new Date().toISOString(),
-                  },
-                });
+                const graphqlResult = await measureApiCall(graphqlUrl, graphqlOptions, 1, testId, testDisplayName, false, 50);
 
                 // Compare responses
                 const comparison = compareMultiTableApiResponses(
@@ -244,24 +275,36 @@ export class TestExecutionService {
                 });
               } else {
                 // Single table test execution logic
-                const restUrl = buildRestUrl(variantSpec.table, variantSpec.fields, variantSpec.filter || '', limit);
-                const restOptions = { method: 'GET', headers: { 'Accept': 'application/json' } };
                 
-                const restResult = await measureApiCall(restUrl, restOptions);
-
-                // Update progress
+                // Start REST calls
                 dispatch({
                   type: 'UPDATE_TEST_STATUS',
                   payload: {
                     id: testId,
                     testType: testDisplayName,
                     status: 'running',
-                    progress: 50,
+                    progress: 5,
+                    startTime: new Date().toISOString(),
+                  },
+                });
+                
+                const restUrl = buildRestUrl(variantSpec.table, variantSpec.fields, variantSpec.filter || '', limit);
+                const restOptions = { method: 'GET', headers: { 'Accept': 'application/json' } };
+                
+                const restResult = await measureApiCall(restUrl, restOptions, 3, testId, testDisplayName, true, 0);
+
+                // Start GraphQL calls
+                dispatch({
+                  type: 'UPDATE_TEST_STATUS',
+                  payload: {
+                    id: testId,
+                    testType: testDisplayName,
+                    status: 'running',
+                    progress: 55,
                     startTime: new Date().toISOString(),
                   },
                 });
 
-                // Execute GraphQL call
                 const graphqlQuery = buildGraphQLQuery(variantSpec.table, variantSpec.fields, variantSpec.filter || '', limit);
                 const graphqlUrl = `${instance.url}/api/now/graphql`;
                 const graphqlOptions = {
@@ -270,19 +313,7 @@ export class TestExecutionService {
                   body: JSON.stringify({ query: graphqlQuery })
                 };
 
-                const graphqlResult = await measureApiCall(graphqlUrl, graphqlOptions);
-
-                // Update progress
-                dispatch({
-                  type: 'UPDATE_TEST_STATUS',
-                  payload: {
-                    id: testId,
-                    testType: testDisplayName,
-                    status: 'running',
-                    progress: 75,
-                    startTime: new Date().toISOString(),
-                  },
-                });
+                const graphqlResult = await measureApiCall(graphqlUrl, graphqlOptions, 3, testId, testDisplayName, false, 50);
 
                 // Compare responses
                 const comparison = compareApiResponses(

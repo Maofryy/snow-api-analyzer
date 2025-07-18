@@ -122,10 +122,21 @@ function benchmarkReducer(state: BenchmarkState, action: BenchmarkAction): Bench
         testResults: [...state.testResults, action.payload] 
       };
     case 'UPDATE_TEST_STATUS': {
-      const updatedStatuses = state.testStatuses.filter(s => s.id !== action.payload.id);
+      const existingIndex = state.testStatuses.findIndex(s => s.id === action.payload.id);
+      
+      let newStatuses;
+      if (existingIndex >= 0) {
+        // Update existing status in place to maintain order
+        newStatuses = [...state.testStatuses];
+        newStatuses[existingIndex] = action.payload;
+      } else {
+        // Add new status
+        newStatuses = [...state.testStatuses, action.payload];
+      }
+      
       return { 
         ...state, 
-        testStatuses: [...updatedStatuses, action.payload] 
+        testStatuses: newStatuses 
       };
     }
     case 'SET_RUNNING':

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -71,6 +71,9 @@ export const ApiCallDetailsModal: React.FC<ApiCallDetailsModalProps> = ({ open, 
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>API Call Details</DialogTitle>
+          <DialogDescription>
+            View detailed information about API calls, responses, and data comparison results
+          </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue={dataComparison ? 'comparison' : (restApiCall ? 'rest' : 'graphql')} className="mt-2 flex-1 overflow-hidden flex flex-col">
           <TabsList>

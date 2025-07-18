@@ -183,6 +183,13 @@ export function TestCategoryPanel({ title, testKey, isOpen, onToggle, descriptio
                 />
               </div>
             </div>
+            <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-3">
+              <div className="font-medium">⚠️ GraphQL Record Limit Notice</div>
+              <div className="mt-1">
+                By default, GraphQL queries are limited to 1000 records. To test large datasets above this limit, 
+                update the system property <code className="bg-amber-100 px-1 rounded font-mono">glide.graphql.gliderecord.maxResults.limit</code> in your ServiceNow instance.
+              </div>
+            </div>
           </div>
         );
       }

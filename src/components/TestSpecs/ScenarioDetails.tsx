@@ -74,13 +74,13 @@ export const ScenarioDetails: React.FC<ScenarioDetailsProps> = ({ spec, onClose,
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="scenario-title" aria-describedby="scenario-description">
             <Card className="w-full max-w-6xl max-h-[90vh] overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between pb-4">
                     <div className="flex items-center gap-4">
                         <div>
-                            <CardTitle className="text-xl font-semibold">{spec.name}</CardTitle>
-                            <p className="text-gray-600 mt-1">{spec.description}</p>
+                            <CardTitle id="scenario-title" className="text-xl font-semibold">{spec.name}</CardTitle>
+                            <p id="scenario-description" className="text-gray-600 mt-1">{spec.description}</p>
                         </div>
                         <div className="flex items-center gap-2">
                             <Badge variant="secondary">{spec.category}</Badge>

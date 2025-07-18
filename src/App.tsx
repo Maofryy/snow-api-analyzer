@@ -9,55 +9,55 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 3,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
+    defaultOptions: {
+        queries: {
+            retry: 3,
+            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+            staleTime: 5 * 60 * 1000, // 5 minutes
+            cacheTime: 10 * 60 * 1000, // 10 minutes
+        },
+        mutations: {
+            retry: 1,
+        },
     },
-    mutations: {
-      retry: 1,
-    },
-  },
 });
 
 // Global error handler for React Query
 queryClient.setMutationDefaults([], {
-  onError: (error) => {
-    logger.error('React Query mutation error', 'queryClient', undefined, error as Error);
-  },
+    onError: (error) => {
+        logger.error("React Query mutation error", "queryClient", undefined, error as Error);
+    },
 });
 
 queryClient.setQueryDefaults([], {
-  onError: (error) => {
-    logger.error('React Query query error', 'queryClient', undefined, error as Error);
-  },
+    onError: (error) => {
+        logger.error("React Query query error", "queryClient", undefined, error as Error);
+    },
 });
 
 const App = () => (
-  <ErrorBoundary
-    onError={(error, errorInfo) => {
-      logger.fatal('Application error boundary triggered', 'app', { errorInfo }, error);
-    }}
-  >
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <ErrorBoundary>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/api/elosa/api_benchmark/home" element={<Index />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </ErrorBoundary>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
+    <ErrorBoundary
+        onError={(error, errorInfo) => {
+            logger.fatal("Application error boundary triggered", "app", { errorInfo }, error);
+        }}
+    >
+        <QueryClientProvider client={queryClient}>
+            <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                    <ErrorBoundary>
+                        <Routes>
+                            <Route path="/" element={<Index />} />
+                            <Route path="/api/x_elosa_api_benc_0/app/home" element={<Index />} />
+                            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                            <Route path="*" element={<NotFound />} />
+                        </Routes>
+                    </ErrorBoundary>
+                </BrowserRouter>
+            </TooltipProvider>
+        </QueryClientProvider>
+    </ErrorBoundary>
 );
 
 export default App;

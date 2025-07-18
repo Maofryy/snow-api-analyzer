@@ -17,6 +17,7 @@ export function LiveProgress() {
     const [showCompletionModal, setShowCompletionModal] = useState(false);
     const [hasShownCompletion, setHasShownCompletion] = useState(false);
 
+
     const handleTestClick = (testStatus: TestStatus) => {
         if (testStatus.restApiCall || testStatus.graphqlApiCall) {
             setSelectedTest(testStatus);
@@ -153,11 +154,19 @@ export function LiveProgress() {
                                 </div>
 
                                 <div className="relative group w-full">
-                                    <Progress value={status.progress} className="h-3 transition-shadow group-hover:shadow-lg [&>div]:bg-blue-500" />
+                                    <Progress 
+                                        value={status.progress} 
+                                        className="h-3 transition-shadow group-hover:shadow-lg [&>div]:bg-blue-500 [&>div]:transition-all [&>div]:duration-500 [&>div]:ease-out" 
+                                    />
                                     {status.status === "running" && (
                                         <div className="absolute inset-0 flex items-center justify-center">
-                                            <span className="font-mono text-xs text-gray-700 font-medium">{Math.round(status.progress)}%</span>
+                                            <span className="font-mono text-xs text-gray-700 font-medium transition-all duration-300">
+                                                {Math.round(status.progress)}%
+                                            </span>
                                         </div>
+                                    )}
+                                    {status.status === "running" && status.progress > 0 && (
+                                        <div className="absolute right-0 top-0 h-full w-1 bg-blue-400 opacity-75 animate-pulse"></div>
                                     )}
                                 </div>
 
