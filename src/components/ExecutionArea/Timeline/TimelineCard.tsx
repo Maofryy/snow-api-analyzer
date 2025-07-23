@@ -171,12 +171,12 @@ export const TimelineCard: React.FC<TimelineCardProps> = ({
               <div className="flex items-center space-x-2 text-sm">
                 <Zap className="w-4 h-4 text-blue-600" />
                 <span className="text-gray-600">REST:</span>
-                <span className="font-mono">{test.summary.restResponseTime ? test.summary.restResponseTime.toFixed(2) : '0.00'}ms</span>
+                <span className="font-mono">{test.summary.restResponseTime != null ? test.summary.restResponseTime.toFixed(2) : '0.00'}ms</span>
               </div>
               <div className="flex items-center space-x-2 text-sm">
                 <Zap className="w-4 h-4 text-purple-600" />
                 <span className="text-gray-600">GraphQL:</span>
-                <span className="font-mono">{test.summary.graphqlResponseTime ? test.summary.graphqlResponseTime.toFixed(2) : '0.00'}ms</span>
+                <span className="font-mono">{test.summary.graphqlResponseTime != null ? test.summary.graphqlResponseTime.toFixed(2) : '0.00'}ms</span>
               </div>
             </div>
             <div className="space-y-2">

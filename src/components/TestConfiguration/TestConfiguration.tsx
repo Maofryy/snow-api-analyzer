@@ -291,15 +291,22 @@ export function TestConfiguration() {
           timestamp: new Date(),
           dataComparison,
           restApiCall: {
-            endpoint: `${scenario.restCalls.length} REST calls to: ${scenario.restCalls.map(c => c.table).join(', ')}`,
+            url: `${scenario.restCalls.length} REST calls to: ${scenario.restCalls.map(c => c.table).join(', ')}`,
             method: 'GET',
+            responseTime: totalRestTime,
+            payloadSize: totalRestPayloadSize,
+            success: restSuccess,
             requestBody: undefined,
             responseBody: allRestResponses,
             headers: { 'Authorization': '***', 'Content-Type': 'application/json' },
           },
           graphqlApiCall: {
-            endpoint: gqlEndpoint,
+            url: gqlEndpoint,
+            method: 'POST',
             query: gqlQueryResult.query,
+            responseTime: gqlResult.responseTime,
+            payloadSize: gqlResult.payloadSize,
+            success: gqlResult.success,
             variables: undefined,
             requestBody: gqlOptions.body,
             responseBody: gqlResult.responseBody,
@@ -316,22 +323,29 @@ export function TestConfiguration() {
           status: 'completed',
           progress: 100,
           endTime: new Date(),
+          dataComparison,
           restApiCall: {
-            endpoint: `${scenario.restCalls.length} REST calls to: ${scenario.restCalls.map(c => c.table).join(', ')}`,
+            url: `${scenario.restCalls.length} REST calls to: ${scenario.restCalls.map(c => c.table).join(', ')}`,
             method: 'GET',
+            responseTime: totalRestTime,
+            payloadSize: totalRestPayloadSize,
+            success: restSuccess,
             requestBody: undefined,
             responseBody: allRestResponses,
             headers: { 'Authorization': '***', 'Content-Type': 'application/json' },
           },
           graphqlApiCall: {
-            endpoint: gqlEndpoint,
+            url: gqlEndpoint,
+            method: 'POST',
             query: gqlQueryResult.query,
+            responseTime: gqlResult.responseTime,
+            payloadSize: gqlResult.payloadSize,
+            success: gqlResult.success,
             variables: undefined,
             requestBody: gqlOptions.body,
             responseBody: gqlResult.responseBody,
             headers: { 'Authorization': '***', 'Content-Type': 'application/json' },
           },
-          dataComparison,
         },
       });
     }
@@ -499,22 +513,29 @@ export function TestConfiguration() {
           status: 'completed',
           progress: 100,
           endTime: new Date(),
+          dataComparison,
           restApiCall: {
-            endpoint: restEndpoint,
+            url: restEndpoint,
             method: 'GET',
+            responseTime: restResponseTime,
+            payloadSize: restPayloadSize,
+            success: restSuccess,
             requestBody: undefined,
             responseBody: restResponseBody,
             headers: { 'Authorization': '***', 'Content-Type': 'application/json' },
           },
           graphqlApiCall: {
-            endpoint: gqlEndpoint,
+            url: gqlEndpoint,
+            method: 'POST',
             query: queryResult.query,
+            responseTime: gqlResponseTime,
+            payloadSize: gqlPayloadSize,
+            success: gqlSuccess,
             variables: gqlParams?.variables,
             requestBody: gqlOptions.body,
             responseBody: gqlResponseBody,
             headers: { 'Authorization': '***', 'Content-Type': 'application/json' },
           },
-          dataComparison,
         },
       });
     }
@@ -523,7 +544,6 @@ export function TestConfiguration() {
     for (const test of enabledTests) {
       const key = test.key;
       const testConfig = state.testConfiguration[key as keyof typeof state.testConfiguration];
-      
       if (key === 'dotWalkingTests') {
         const variants = testConfig.selectedVariants || Object.keys(testSpecs.dotWalkingTests);
         const limits = testConfig.selectedLimits || [25, 50, 100];
@@ -928,15 +948,22 @@ export function TestConfiguration() {
           progress: 100,
           endTime: new Date(),
           restApiCall: {
-            endpoint: restEndpoint,
+            url: restEndpoint,
             method: 'GET',
+            responseTime: restCallResult.responseTime,
+            payloadSize: restCallResult.payloadSize,
+            success: restCallResult.success,
             requestBody: undefined,
             responseBody: restCallResult.responseBody,
             headers: { 'Authorization': '***', 'Content-Type': 'application/json' },
           },
           graphqlApiCall: {
-            endpoint: gqlEndpoint,
+            url: gqlEndpoint,
+            method: 'POST',
             query: gqlResult.query,
+            responseTime: gqlCallResult.responseTime,
+            payloadSize: gqlCallResult.payloadSize,
+            success: gqlCallResult.success,
             variables: undefined,
             requestBody: gqlOptions.body,
             responseBody: gqlCallResult.responseBody,

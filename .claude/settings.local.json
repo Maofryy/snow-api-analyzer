@@ -8,7 +8,22 @@
       "WebFetch(domain:www.servicenow.com)",
       "Bash(find:*)",
       "Bash(ls:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(./node_modules/.bin/tailwindcss:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(npx shadcn-ui@latest add:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npm pkg set:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(timeout 10s npm run dev)",
+      "WebFetch(domain:ui.shadcn.com)",
+      "Bash(npx:*)",
+      "WebFetch(domain:tailwindcss.com)"
     ],
     "deny": []
   }

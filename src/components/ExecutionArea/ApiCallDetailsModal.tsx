@@ -10,22 +10,24 @@ interface ApiCallDetailsModalProps {
   open: boolean;
   onClose: () => void;
   restApiCall?: {
-    url: string;
+    url?: string;
+    endpoint?: string;
     method: string;
-    responseTime: number;
-    payloadSize: number;
-    success: boolean;
+    responseTime?: number;
+    payloadSize?: number;
+    success?: boolean;
     requestBody?: unknown;
     responseBody?: unknown;
     headers?: Record<string, string>;
   };
   graphqlApiCall?: {
-    url: string;
+    url?: string;
+    endpoint?: string;
     method: string;
     query?: string;
-    responseTime: number;
-    payloadSize: number;
-    success: boolean;
+    responseTime?: number;
+    payloadSize?: number;
+    success?: boolean;
     variables?: unknown;
     requestBody?: unknown;
     responseBody?: unknown;
@@ -45,6 +47,8 @@ function formatJson(obj: unknown) {
 
 export const ApiCallDetailsModal: React.FC<ApiCallDetailsModalProps> = ({ open, onClose, restApiCall, graphqlApiCall, dataComparison }) => {
   const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
+
+
 
   const handleCopy = async (content: string, key: string) => {
     try {
@@ -93,24 +97,31 @@ export const ApiCallDetailsModal: React.FC<ApiCallDetailsModalProps> = ({ open, 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <strong>URL:</strong>
-                  <CopyButton content={restApiCall.url} copyKey="rest-url" />
+                  <CopyButton content={restApiCall.url || restApiCall.endpoint || ''} copyKey="rest-url" />
                 </div>
-                <div className="font-mono break-all text-sm bg-gray-50 p-2 rounded">{restApiCall.url}</div>
+                <div className="font-mono break-all text-sm bg-gray-50 p-2 rounded">{restApiCall.url || restApiCall.endpoint || 'N/A'}</div>
                 
                 <div><strong>Method:</strong> <span className="font-mono">{restApiCall.method}</span></div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <strong>Response Time:</strong> <span className="font-mono">{restApiCall.responseTime.toFixed(2)}ms</span>
+                    <strong>Response Time:</strong> 
+                    <span className="font-mono">
+                      {typeof restApiCall.responseTime === 'number' ? restApiCall.responseTime.toFixed(2) : 'N/A'}ms
+                    </span>
                   </div>
                   <div>
-                    <strong>Payload Size:</strong> <span className="font-mono">{(restApiCall.payloadSize / 1024).toFixed(2)}KB</span>
+                    <strong>Payload Size:</strong> 
+                    <span className="font-mono">
+                      {typeof restApiCall.payloadSize === 'number' ? (restApiCall.payloadSize / 1024).toFixed(2) : 'N/A'}KB
+                    </span>
                   </div>
                 </div>
                 
                 <div>
-                  <strong>Success:</strong> <Badge variant={restApiCall.success ? "default" : "destructive"}>
-                    {restApiCall.success ? "✓ Success" : "✗ Failed"}
+                  <strong>Success:</strong> 
+                  <Badge variant={restApiCall.success === true ? "default" : restApiCall.success === false ? "destructive" : "secondary"}>
+                    {restApiCall.success === true ? "✓ Success" : restApiCall.success === false ? "✗ Failed" : "Unknown"}
                   </Badge>
                 </div>
                 
@@ -140,22 +151,29 @@ export const ApiCallDetailsModal: React.FC<ApiCallDetailsModalProps> = ({ open, 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <strong>URL:</strong>
-                  <CopyButton content={graphqlApiCall.url} copyKey="graphql-url" />
+                  <CopyButton content={graphqlApiCall.url || graphqlApiCall.endpoint || ''} copyKey="graphql-url" />
                 </div>
-                <div className="font-mono break-all text-sm bg-gray-50 p-2 rounded">{graphqlApiCall.url}</div>
+                <div className="font-mono break-all text-sm bg-gray-50 p-2 rounded">{graphqlApiCall.url || graphqlApiCall.endpoint || 'N/A'}</div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <strong>Response Time:</strong> <span className="font-mono">{graphqlApiCall.responseTime.toFixed(2)}ms</span>
+                    <strong>Response Time:</strong> 
+                    <span className="font-mono">
+                      {typeof graphqlApiCall.responseTime === 'number' ? graphqlApiCall.responseTime.toFixed(2) : 'N/A'}ms
+                    </span>
                   </div>
                   <div>
-                    <strong>Payload Size:</strong> <span className="font-mono">{(graphqlApiCall.payloadSize / 1024).toFixed(2)}KB</span>
+                    <strong>Payload Size:</strong> 
+                    <span className="font-mono">
+                      {typeof graphqlApiCall.payloadSize === 'number' ? (graphqlApiCall.payloadSize / 1024).toFixed(2) : 'N/A'}KB
+                    </span>
                   </div>
                 </div>
                 
                 <div>
-                  <strong>Success:</strong> <Badge variant={graphqlApiCall.success ? "default" : "destructive"}>
-                    {graphqlApiCall.success ? "✓ Success" : "✗ Failed"}
+                  <strong>Success:</strong> 
+                  <Badge variant={graphqlApiCall.success === true ? "default" : graphqlApiCall.success === false ? "destructive" : "secondary"}>
+                    {graphqlApiCall.success === true ? "✓ Success" : graphqlApiCall.success === false ? "✗ Failed" : "Unknown"}
                   </Badge>
                 </div>
                 

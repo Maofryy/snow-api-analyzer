@@ -128,8 +128,6 @@ function benchmarkReducer(state: BenchmarkState, action: BenchmarkAction): Bench
       console.log('🔍 BenchmarkContext - UPDATE_TEST_STATUS:', {
         id: action.payload.id,
         status: action.payload.status,
-        restApiCall: action.payload.restApiCall,
-        graphqlApiCall: action.payload.graphqlApiCall,
         restResponseTime: action.payload.restApiCall?.responseTime,
         graphqlResponseTime: action.payload.graphqlApiCall?.responseTime,
         restPayloadSize: action.payload.restApiCall?.payloadSize,
