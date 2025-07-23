@@ -103,16 +103,24 @@ export interface TestStatus {
   progress: number;
   startTime?: Date;
   endTime?: Date;
+  error?: string;
   restApiCall?: {
-    endpoint: string;
+    url: string;
     method: string;
+    responseTime: number;
+    payloadSize: number;
+    success: boolean;
     requestBody?: unknown;
     responseBody?: unknown;
     headers?: Record<string, string>;
   };
   graphqlApiCall?: {
-    endpoint: string;
-    query: string;
+    url: string;
+    method: string;
+    query?: string;
+    responseTime: number;
+    payloadSize: number;
+    success: boolean;
     variables?: unknown;
     requestBody?: unknown;
     responseBody?: unknown;

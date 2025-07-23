@@ -102,6 +102,7 @@ const getInitialState = (): BenchmarkState => {
 const initialState: BenchmarkState = getInitialState();
 
 function benchmarkReducer(state: BenchmarkState, action: BenchmarkAction): BenchmarkState {
+  console.log('🔍 BenchmarkContext - Action dispatched:', action.type, action.payload);
   switch (action.type) {
     case 'SET_INSTANCE':
       // Securely store credentials when instance is updated
@@ -124,14 +125,38 @@ function benchmarkReducer(state: BenchmarkState, action: BenchmarkAction): Bench
     case 'UPDATE_TEST_STATUS': {
       const existingIndex = state.testStatuses.findIndex(s => s.id === action.payload.id);
       
+      console.log('🔍 BenchmarkContext - UPDATE_TEST_STATUS:', {
+        id: action.payload.id,
+        status: action.payload.status,
+        restApiCall: action.payload.restApiCall,
+        graphqlApiCall: action.payload.graphqlApiCall,
+        restResponseTime: action.payload.restApiCall?.responseTime,
+        graphqlResponseTime: action.payload.graphqlApiCall?.responseTime,
+        restPayloadSize: action.payload.restApiCall?.payloadSize,
+        graphqlPayloadSize: action.payload.graphqlApiCall?.payloadSize
+      });
+      
       let newStatuses;
       if (existingIndex >= 0) {
-        // Update existing status in place to maintain order
+        // Merge with existing status to preserve complete data
         newStatuses = [...state.testStatuses];
-        newStatuses[existingIndex] = action.payload;
+        newStatuses[existingIndex] = {
+          ...newStatuses[existingIndex], // Keep existing data
+          ...action.payload // Override with new data
+        };
+        console.log('🔍 BenchmarkContext - Merged existing status at index', existingIndex);
+        console.log('🔍 BenchmarkContext - Final merged status:', {
+          id: newStatuses[existingIndex].id,
+          status: newStatuses[existingIndex].status,
+          restResponseTime: newStatuses[existingIndex].restApiCall?.responseTime,
+          graphqlResponseTime: newStatuses[existingIndex].graphqlApiCall?.responseTime,
+          restPayloadSize: newStatuses[existingIndex].restApiCall?.payloadSize,
+          graphqlPayloadSize: newStatuses[existingIndex].graphqlApiCall?.payloadSize
+        });
       } else {
         // Add new status
         newStatuses = [...state.testStatuses, action.payload];
+        console.log('🔍 BenchmarkContext - Added new status');
       }
       
       return { 

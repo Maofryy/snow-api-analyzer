@@ -53,7 +53,7 @@ export class TestExecutionService {
                 testType: testDisplayName,
                 status: 'running',
                 progress: finalProgress,
-                startTime: new Date().toISOString(),
+                startTime: testStartTime,
               },
             });
             
@@ -71,6 +71,7 @@ export class TestExecutionService {
             if (i === iterations - 1) { // Keep last response for data comparison
               finalResponseBody = responseBody;
               finalPayloadSize = JSON.stringify(responseBody).length;
+              console.log('🔍 measureApiCall - Final iteration payload size:', finalPayloadSize, 'for', testId);
             }
             
             // Small delay between measurements to reduce caching effects
@@ -91,6 +92,13 @@ export class TestExecutionService {
         // Use median time for more stable results (less affected by outliers)
         const sortedTimes = [...times].sort((a, b) => a - b);
         const medianTime = sortedTimes[Math.floor(sortedTimes.length / 2)];
+
+        console.log('🔍 measureApiCall result:', {
+          responseTime: medianTime,
+          payloadSize: finalPayloadSize,
+          success,
+          allResponseTimes: times
+        });
 
         return {
           responseTime: medianTime,
@@ -142,6 +150,8 @@ export class TestExecutionService {
             const testId = `${category.key}-${variant}-${limit}`;
             const testDisplayName = `${category.title} - ${variant} (${limit} records)`;
 
+            const testStartTime = new Date().toISOString();
+            
             // Update test status
             dispatch({
               type: 'UPDATE_TEST_STATUS',
@@ -150,7 +160,7 @@ export class TestExecutionService {
                 testType: testDisplayName,
                 status: 'running',
                 progress: 0,
-                startTime: new Date().toISOString(),
+                startTime: testStartTime,
               },
             });
 
@@ -242,6 +252,32 @@ export class TestExecutionService {
                 totalGraphqlResponseTime += graphqlResult.responseTime;
                 totalRestPayloadSize += restTotalPayload;
                 totalGraphqlPayloadSize += graphqlResult.payloadSize;
+
+                // Add test result
+                dispatch({
+                  type: 'ADD_TEST_RESULT',
+                  payload: {
+                    id: testId,
+                    testType: testDisplayName,
+                    restApi: {
+                      responseTime: restTotalTime,
+                      payloadSize: restTotalPayload,
+                      requestCount: restResponses.length,
+                      success: restSuccess,
+                      allResponseTimes: restResponses.map(r => r.responseTime)
+                    },
+                    graphqlApi: {
+                      responseTime: graphqlResult.responseTime,
+                      payloadSize: graphqlResult.payloadSize,
+                      requestCount: 1,
+                      success: graphqlResult.success,
+                      allResponseTimes: graphqlResult.allResponseTimes
+                    },
+                    winner: restWon ? 'rest' : graphqlWon ? 'graphql' : 'tie',
+                    timestamp: new Date(),
+                    dataComparison: comparison
+                  }
+                });
 
                 // Final update
                 dispatch({
@@ -336,35 +372,70 @@ export class TestExecutionService {
                 totalRestPayloadSize += restResult.payloadSize;
                 totalGraphqlPayloadSize += graphqlResult.payloadSize;
 
-                // Final update
+                // Add test result
                 dispatch({
-                  type: 'UPDATE_TEST_STATUS',
+                  type: 'ADD_TEST_RESULT',
                   payload: {
                     id: testId,
                     testType: testDisplayName,
-                    status: 'completed',
-                    progress: 100,
-                    startTime: new Date().toISOString(),
-                    endTime: new Date().toISOString(),
-                    dataComparison: comparison,
-                    restApiCall: {
-                      url: restUrl,
-                      method: 'GET',
+                    restApi: {
                       responseTime: restResult.responseTime,
                       payloadSize: restResult.payloadSize,
+                      requestCount: 1,
                       success: restResult.success,
-                      responseBody: restResult.responseBody
+                      allResponseTimes: restResult.allResponseTimes
                     },
-                    graphqlApiCall: {
-                      url: graphqlUrl,
-                      method: 'POST',
-                      query: graphqlQuery,
+                    graphqlApi: {
                       responseTime: graphqlResult.responseTime,
                       payloadSize: graphqlResult.payloadSize,
+                      requestCount: 1,
                       success: graphqlResult.success,
-                      responseBody: graphqlResult.responseBody
-                    }
+                      allResponseTimes: graphqlResult.allResponseTimes
+                    },
+                    winner: restWon ? 'rest' : graphqlWon ? 'graphql' : 'tie',
+                    timestamp: new Date(),
+                    dataComparison: comparison
+                  }
+                });
+
+                // Final update
+                const testEndTime = new Date().toISOString();
+                const finalPayload = {
+                  id: testId,
+                  testType: testDisplayName,
+                  status: 'completed',
+                  progress: 100,
+                  startTime: testStartTime,
+                  endTime: testEndTime,
+                  dataComparison: comparison,
+                  restApiCall: {
+                    url: restUrl,
+                    method: 'GET',
+                    responseTime: restResult.responseTime,
+                    payloadSize: restResult.payloadSize,
+                    success: restResult.success,
+                    responseBody: restResult.responseBody
                   },
+                  graphqlApiCall: {
+                    url: graphqlUrl,
+                    method: 'POST',
+                    query: graphqlQuery,
+                    responseTime: graphqlResult.responseTime,
+                    payloadSize: graphqlResult.payloadSize,
+                    success: graphqlResult.success,
+                    responseBody: graphqlResult.responseBody
+                  }
+                };
+
+                console.log('🔍 TestExecutionService - Final update payload:', finalPayload);
+                console.log('🔍 Response times - REST:', restResult.responseTime, 'GraphQL:', graphqlResult.responseTime);
+                console.log('🔍 Payload sizes - REST:', restResult.payloadSize, 'GraphQL:', graphqlResult.payloadSize);
+                console.log('🔍 Complete restApiCall object:', finalPayload.restApiCall);
+                console.log('🔍 Complete graphqlApiCall object:', finalPayload.graphqlApiCall);
+                
+                dispatch({
+                  type: 'UPDATE_TEST_STATUS',
+                  payload: finalPayload,
                 });
               }
             } catch (error) {

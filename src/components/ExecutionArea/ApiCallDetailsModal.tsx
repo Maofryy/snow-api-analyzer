@@ -10,15 +10,22 @@ interface ApiCallDetailsModalProps {
   open: boolean;
   onClose: () => void;
   restApiCall?: {
-    endpoint: string;
+    url: string;
     method: string;
+    responseTime: number;
+    payloadSize: number;
+    success: boolean;
     requestBody?: unknown;
     responseBody?: unknown;
     headers?: Record<string, string>;
   };
   graphqlApiCall?: {
-    endpoint: string;
-    query: string;
+    url: string;
+    method: string;
+    query?: string;
+    responseTime: number;
+    payloadSize: number;
+    success: boolean;
     variables?: unknown;
     requestBody?: unknown;
     responseBody?: unknown;
@@ -85,12 +92,27 @@ export const ApiCallDetailsModal: React.FC<ApiCallDetailsModalProps> = ({ open, 
             <TabsContent value="rest" className="flex-1 overflow-auto">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <strong>Endpoint:</strong>
-                  <CopyButton content={restApiCall.endpoint} copyKey="rest-endpoint" />
+                  <strong>URL:</strong>
+                  <CopyButton content={restApiCall.url} copyKey="rest-url" />
                 </div>
-                <div className="font-mono break-all text-sm bg-gray-50 p-2 rounded">{restApiCall.endpoint}</div>
+                <div className="font-mono break-all text-sm bg-gray-50 p-2 rounded">{restApiCall.url}</div>
                 
                 <div><strong>Method:</strong> <span className="font-mono">{restApiCall.method}</span></div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <strong>Response Time:</strong> <span className="font-mono">{restApiCall.responseTime.toFixed(2)}ms</span>
+                  </div>
+                  <div>
+                    <strong>Payload Size:</strong> <span className="font-mono">{(restApiCall.payloadSize / 1024).toFixed(2)}KB</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <strong>Success:</strong> <Badge variant={restApiCall.success ? "default" : "destructive"}>
+                    {restApiCall.success ? "✓ Success" : "✗ Failed"}
+                  </Badge>
+                </div>
                 
                 {restApiCall.requestBody && (
                   <div>
@@ -117,18 +139,35 @@ export const ApiCallDetailsModal: React.FC<ApiCallDetailsModalProps> = ({ open, 
             <TabsContent value="graphql" className="flex-1 overflow-auto">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <strong>Endpoint:</strong>
-                  <CopyButton content={graphqlApiCall.endpoint} copyKey="graphql-endpoint" />
+                  <strong>URL:</strong>
+                  <CopyButton content={graphqlApiCall.url} copyKey="graphql-url" />
                 </div>
-                <div className="font-mono break-all text-sm bg-gray-50 p-2 rounded">{graphqlApiCall.endpoint}</div>
+                <div className="font-mono break-all text-sm bg-gray-50 p-2 rounded">{graphqlApiCall.url}</div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <strong>Response Time:</strong> <span className="font-mono">{graphqlApiCall.responseTime.toFixed(2)}ms</span>
+                  </div>
+                  <div>
+                    <strong>Payload Size:</strong> <span className="font-mono">{(graphqlApiCall.payloadSize / 1024).toFixed(2)}KB</span>
+                  </div>
+                </div>
                 
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <strong>Query:</strong>
-                    <CopyButton content={graphqlApiCall.query} copyKey="graphql-query" />
-                  </div>
-                  <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto max-h-32">{graphqlApiCall.query}</pre>
+                  <strong>Success:</strong> <Badge variant={graphqlApiCall.success ? "default" : "destructive"}>
+                    {graphqlApiCall.success ? "✓ Success" : "✗ Failed"}
+                  </Badge>
                 </div>
+                
+                {graphqlApiCall.query && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <strong>Query:</strong>
+                      <CopyButton content={graphqlApiCall.query} copyKey="graphql-query" />
+                    </div>
+                    <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto max-h-32">{graphqlApiCall.query}</pre>
+                  </div>
+                )}
                 {graphqlApiCall.variables && (
                   <div>
                     <div className="flex items-center justify-between mb-2">
