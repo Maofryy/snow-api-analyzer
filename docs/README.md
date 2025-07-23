@@ -49,12 +49,22 @@ Welcome to the comprehensive documentation for the ServiceNow API Benchmark Tool
 - Success metrics and performance analysis
 - Future enhancement roadmap
 
+### 🔧 [API_REFERENCE.md](./API_REFERENCE.md)
+**Developer API Reference**
+- Comprehensive API documentation for all services and utilities
+- Authentication system (dual-mode development/production)
+- Test execution services and configuration
+- Data analysis and comparison utilities
+- Storage management and caching systems
+- Performance monitoring and security features
+
 ## 🔍 Quick Reference
 
 ### **For Developers**
-- Start with **CLAUDE.md** for technical architecture
-- Review **IMPROVEMENTS.md** for security and performance details
-- Check **customRequest.md** for custom request implementation
+- Start with **CLAUDE.md** for technical architecture and development guidelines
+- Review **API_REFERENCE.md** for comprehensive API documentation
+- Check **IMPROVEMENTS.md** for security and performance details
+- Explore **customRequest.md** for custom request implementation
 
 ### **For End Users**
 - Read **GUIDE_UTILISATION_DETAILLE.md** for complete usage instructions
@@ -92,20 +102,24 @@ Welcome to the comprehensive documentation for the ServiceNow API Benchmark Tool
 ```
 docs/
 ├── README.md                      # This file - Documentation overview
-├── CLAUDE.md                      # Technical documentation
+├── CLAUDE.md                      # Technical documentation & development guide
+├── API_REFERENCE.md               # Comprehensive API documentation
 ├── GUIDE_UTILISATION_DETAILLE.md  # User guide (French)
 ├── IMPROVEMENTS.md                # Security & performance improvements
 ├── PRESENTATION_COLLEGUES.md      # Team presentation (French)
-└── customRequest.md               # Custom request feature documentation
+├── customRequest.md               # Custom request feature documentation
+├── ServiceNow React App Setup Protocol.md    # Setup protocols
+└── ServiceNow React App Specifications.md    # Technical specifications
 ```
 
 ## 🎯 Getting Started
 
 1. **New to the project?** Start with [PRESENTATION_COLLEGUES.md](./PRESENTATION_COLLEGUES.md)
 2. **Want to use the tool?** Read [GUIDE_UTILISATION_DETAILLE.md](./GUIDE_UTILISATION_DETAILLE.md)
-3. **Need to develop?** Check [CLAUDE.md](./CLAUDE.md)
+3. **Need to develop?** Check [CLAUDE.md](./CLAUDE.md) and [API_REFERENCE.md](./API_REFERENCE.md)
 4. **Looking for improvements?** Review [IMPROVEMENTS.md](./IMPROVEMENTS.md)
 5. **Want custom requests?** Explore [customRequest.md](./customRequest.md)
+6. **Setting up deployment?** See [ServiceNow React App Setup Protocol.md](./ServiceNow%20React%20App%20Setup%20Protocol.md)
 
 ## 📞 Support
 
